@@ -1,0 +1,566 @@
+// app/admin/notifications.tsx
+import React, { useEffect, useState, useCallback, useMemo } from "react";
+import {
+  View,
+  Text,
+  StyleSheet,
+  TextInput,
+  TouchableOpacity,
+  Alert,
+  ScrollView,
+  Platform,
+  ActivityIndicator,
+  KeyboardAvoidingView,
+} from "react-native";
+import { fetchEmployees, Employee } from "../../services/employeeService";
+import {
+  fetchAdminNotifications,
+  NotificationItem,
+  sendAdminBroadcast,
+} from "../../services/notificationService";
+
+type Audience = "all" | "single";
+
+export default function AdminNotificationsScreen() {
+  const [title, setTitle] = useState("");
+  const [message, setMessage] = useState("");
+  const [audience, setAudience] = useState<Audience>("all");
+  const [targetUserId, setTargetUserId] = useState("");
+  const [searchEmployee, setSearchEmployee] = useState(""); // search for employee
+  const [searchNotification, setSearchNotification] = useState(""); // search for notifications
+  const [loading, setLoading] = useState(false);
+  const [employees, setEmployees] = useState<Employee[]>([]);
+
+  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
+  const [loadingNotifications, setLoadingNotifications] = useState(false);
+
+  // ================== EMPLOYEES ==================
+  useEffect(() => {
+    (async () => {
+      try {
+        const list = await fetchEmployees();
+        setEmployees(list);
+      } catch (e: any) {
+        Alert.alert("Error", e?.message || "Failed to load employees");
+      }
+    })();
+  }, []);
+
+  // filter employees by search text for single audience
+  const filteredEmployees = useMemo(
+    () =>
+      employees.filter((e) => {
+        if (!searchEmployee.trim()) return true;
+        const q = searchEmployee.toLowerCase();
+        return (
+          e.user_id.toLowerCase().includes(q) ||
+          (e.name || "").toLowerCase().includes(q)
+        );
+      }),
+    [employees, searchEmployee]
+  );
+
+  // ================== NOTIFICATIONS ==================
+  const loadNotifications = useCallback(async () => {
+    try {
+      setLoadingNotifications(true);
+      const data = await fetchAdminNotifications();
+      setNotifications(data);
+    } catch (e: any) {
+      console.log(
+        "[AdminNotificationsScreen] loadNotifications error:",
+        e?.message
+      );
+      console.log(
+        "[AdminNotificationsScreen] error response:",
+        e?.response?.status,
+        e?.response?.data
+      );
+    } finally {
+      setLoadingNotifications(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadNotifications();
+  }, [loadNotifications]);
+
+  // search filter for notifications (title, message, userName, type label)
+  const filteredNotifications = useMemo(() => {
+    if (!searchNotification.trim()) return notifications;
+
+    const q = searchNotification.toLowerCase();
+
+    return notifications.filter((item) => {
+      const created = new Date(item.createdAt);
+      const typeLabel =
+        item.type === "HOME_ATTENDANCE"
+          ? "Home Attendance"
+          : item.type === "ADMIN_BROADCAST"
+          ? "Admin Broadcast"
+          : "Employee Message";
+
+      const nameLabel =
+        item.userName && item.userCode
+          ? `${item.userName} (${item.userCode})`
+          : item.userName || item.userCode || `User #${item.userId}`;
+
+      return (
+        (item.title || "").toLowerCase().includes(q) ||
+        (item.message || "").toLowerCase().includes(q) ||
+        nameLabel.toLowerCase().includes(q) ||
+        typeLabel.toLowerCase().includes(q) ||
+        created.toLocaleString().toLowerCase().includes(q)
+      );
+    });
+  }, [notifications, searchNotification]);
+
+  // ================== FORM ==================
+  const validate = () => {
+    if (title.trim().length < 3) return "Title must be at least 3 characters";
+    if (message.trim().length < 5)
+      return "Message must be at least 5 characters";
+    if (audience === "single" && !targetUserId.trim())
+      return "Employee User ID is required for single user notification";
+    return null;
+  };
+
+  const handleSend = async () => {
+    const err = validate();
+    if (err) {
+      Alert.alert("Error", err);
+      return;
+    }
+
+    Alert.alert("Confirm", "Send this notification?", [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Send",
+        onPress: async () => {
+          try {
+            setLoading(true);
+
+            await sendAdminBroadcast({
+              title,
+              message,
+              audience,
+              user_id: audience === "single" ? targetUserId : undefined,
+            });
+
+            Alert.alert("Success", "Notification sent");
+
+            setTitle("");
+            setMessage("");
+            setAudience("all");
+            setTargetUserId("");
+            setSearchEmployee("");
+
+            await loadNotifications();
+          } catch (e: any) {
+            const msg =
+              e?.response?.data?.message ||
+              e?.message ||
+              "Failed to send notification";
+            Alert.alert("Error", msg);
+          } finally {
+            setLoading(false);
+          }
+        },
+      },
+    ]);
+  };
+
+  const behavior = Platform.OS === "ios" ? "padding" : "height";
+
+  const renderNotificationRow = (item: NotificationItem) => {
+    const created = new Date(item.createdAt);
+    const dateLabel = created.toLocaleString();
+
+    const nameLabel =
+      item.userName && item.userCode
+        ? `${item.userName} (${item.userCode})`
+        : item.userName || item.userCode || `User #${item.userId}`;
+
+    const roleLabel = item.senderRole === "admin" ? "Admin" : "Employee";
+
+    const typeLabel =
+      item.type === "HOME_ATTENDANCE"
+        ? "Home Attendance"
+        : item.type === "ADMIN_BROADCAST"
+        ? "Admin Broadcast"
+        : "Employee Message";
+
+    return (
+      <View key={item.id} style={styles.msgCard}>
+        <View style={styles.msgHeaderRow}>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.msgName}>{nameLabel}</Text>
+            <View style={styles.roleRow}>
+              <Text style={styles.roleBadge}>{roleLabel}</Text>
+              <Text style={styles.msgType}>{typeLabel}</Text>
+            </View>
+          </View>
+          <Text style={styles.msgMetaSmall}>{dateLabel}</Text>
+        </View>
+        {!!item.title && (
+          <Text style={[styles.msgText, { fontWeight: "700" }]}>
+            {item.title}
+          </Text>
+        )}
+        <Text style={styles.msgText}>{item.message}</Text>
+      </View>
+    );
+  };
+
+  return (
+    <View style={styles.root}>
+      <KeyboardAvoidingView
+        style={styles.flex}
+        behavior={behavior}
+        keyboardVerticalOffset={Platform.OS === "ios" ? 10 : 0}
+      >
+        <ScrollView
+          style={styles.container}
+          contentContainerStyle={styles.content}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
+          <Text style={styles.header}>Admin Notifications</Text>
+          <Text style={styles.subheader}>
+            Send important messages to all employees or a specific user.
+          </Text>
+
+          {/* SEND FORM */}
+          <View style={styles.card}>
+            <Text style={styles.label}>Title *</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="Short title"
+              placeholderTextColor="#6b7280"
+              value={title}
+              onChangeText={setTitle}
+              returnKeyType="next"
+            />
+
+            <Text style={styles.label}>Message *</Text>
+            <TextInput
+              style={[styles.input, styles.textArea]}
+              placeholder="Type your message..."
+              placeholderTextColor="#6b7280"
+              value={message}
+              onChangeText={setMessage}
+              multiline
+              numberOfLines={5}
+              textAlignVertical="top"
+            />
+
+            <Text style={styles.label}>Audience *</Text>
+            <View style={styles.audienceRow}>
+              <TouchableOpacity
+                style={[
+                  styles.audienceChip,
+                  audience === "all" && styles.audienceChipActive,
+                ]}
+                onPress={() => setAudience("all")}
+              >
+                <Text
+                  style={[
+                    styles.audienceText,
+                    audience === "all" && styles.audienceTextActive,
+                  ]}
+                >
+                  All employees
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[
+                  styles.audienceChip,
+                  styles.lastChip,
+                  audience === "single" && styles.audienceChipActive,
+                ]}
+                onPress={() => setAudience("single")}
+              >
+                <Text
+                  style={[
+                    styles.audienceText,
+                    audience === "single" && styles.audienceTextActive,
+                  ]}
+                >
+                  Single employee
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            {audience === "single" && (
+              <>
+                <Text style={styles.label}>Employee (search & tap) *</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="Search by ID or name..."
+                  placeholderTextColor="#6b7280"
+                  value={searchEmployee}
+                  onChangeText={(text) => {
+                    setSearchEmployee(text);
+                    // optional: only bind to targetUserId when it's an exact ID
+                    setTargetUserId(text);
+                  }}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  returnKeyType="done"
+                />
+
+                {filteredEmployees.length > 0 && (
+                  <View style={styles.suggestionsContainer}>
+                    {filteredEmployees.slice(0, 5).map((e) => (
+                      <TouchableOpacity
+                        key={e.user_id}
+                        style={styles.suggestionItem}
+                        onPress={() => {
+                          setTargetUserId(e.user_id);
+                          setSearchEmployee(e.user_id);
+                        }}
+                      >
+                        <Text style={styles.suggestionText}>
+                          {e.user_id} · {e.name || "No name"}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                )}
+
+                {employees.length > 0 && (
+                  <Text style={styles.hint}>
+                    Example IDs:{" "}
+                    {employees
+                      .slice(0, 3)
+                      .map((e) => e.user_id)
+                      .join(", ")}
+                    {employees.length > 3 ? "..." : ""}
+                  </Text>
+                )}
+              </>
+            )}
+
+            <TouchableOpacity
+              style={[styles.button, loading && styles.buttonDisabled]}
+              onPress={handleSend}
+              disabled={loading}
+            >
+              {loading ? (
+                <ActivityIndicator color="#fff" size="small" />
+              ) : (
+                <Text style={styles.buttonText}>Send Notification</Text>
+              )}
+            </TouchableOpacity>
+          </View>
+
+          {/* NOTIFICATIONS LIST + SEARCH */}
+          <Text style={styles.sectionHeader}>Messages / Broadcasts</Text>
+
+          <TextInput
+            style={[styles.input, { marginBottom: 8 }]}
+            placeholder="Search notifications (title, message, user, type...)"
+            placeholderTextColor="#6b7280"
+            value={searchNotification}
+            onChangeText={setSearchNotification}
+          />
+
+          {loadingNotifications && notifications.length === 0 ? (
+            <View style={styles.centerBox}>
+              <ActivityIndicator size="small" color="#60a5fa" />
+              <Text style={styles.loadingText}>
+                Loading notifications...
+              </Text>
+            </View>
+          ) : filteredNotifications.length === 0 ? (
+            <Text style={styles.emptyText}>No notifications found.</Text>
+          ) : (
+            filteredNotifications.map(renderNotificationRow)
+          )}
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  root: { flex: 1, backgroundColor: "#020617" },
+  flex: { flex: 1 },
+  container: { flex: 1 },
+  content: {
+    padding: 16,
+    paddingBottom: 32,
+  },
+  header: {
+    fontSize: 22,
+    fontWeight: "800",
+    color: "#f9fafb",
+    marginBottom: 4,
+  },
+  subheader: {
+    fontSize: 13,
+    color: "#9ca3af",
+    marginBottom: 16,
+  },
+  card: {
+    backgroundColor: "#020617",
+    borderRadius: 20,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: "rgba(148,163,184,0.45)",
+  },
+  label: {
+    fontSize: 13,
+    color: "#e5e7eb",
+    marginTop: 8,
+    marginBottom: 4,
+    fontWeight: "600",
+  },
+  input: {
+    borderWidth: 1,
+    borderColor: "#334155",
+    borderRadius: 10,
+    paddingHorizontal: 10,
+    paddingVertical: Platform.select({ ios: 10, android: 8 }),
+    color: "#f9fafb",
+    fontSize: 14,
+    backgroundColor: "#020617",
+  },
+  textArea: {
+    minHeight: 90,
+  },
+  audienceRow: {
+    flexDirection: "row",
+    marginTop: 4,
+  },
+  audienceChip: {
+    flex: 1,
+    paddingVertical: 8,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: "#4b5563",
+    alignItems: "center",
+    marginRight: 8,
+  },
+  lastChip: { marginRight: 0 },
+  audienceChipActive: {
+    backgroundColor: "#2563eb",
+    borderColor: "#2563eb",
+  },
+  audienceText: {
+    fontSize: 13,
+    color: "#e5e7eb",
+    fontWeight: "600",
+  },
+  audienceTextActive: {
+    color: "#fff",
+  },
+  hint: {
+    fontSize: 11,
+    color: "#9ca3af",
+    marginTop: 4,
+  },
+  button: {
+    marginTop: 16,
+    backgroundColor: "#3b82f6",
+    paddingVertical: 12,
+    borderRadius: 999,
+    alignItems: "center",
+  },
+  buttonDisabled: {
+    backgroundColor: "#60a5fa",
+  },
+  buttonText: {
+    color: "#fff",
+    fontSize: 15,
+    fontWeight: "700",
+  },
+  sectionHeader: {
+    marginTop: 20,
+    marginBottom: 8,
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#f9fafb",
+  },
+  centerBox: {
+    marginTop: 16,
+    alignItems: "center",
+  },
+  loadingText: {
+    marginTop: 8,
+    color: "#9ca3af",
+    fontSize: 13,
+  },
+  emptyText: {
+    marginTop: 8,
+    color: "#9ca3af",
+    fontSize: 13,
+  },
+  msgCard: {
+    backgroundColor: "#020617",
+    borderRadius: 16,
+    padding: 12,
+    marginTop: 8,
+    borderWidth: 1,
+    borderColor: "rgba(148,163,184,0.45)",
+  },
+  msgHeaderRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+  },
+  msgName: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: "#e5e7eb",
+  },
+  roleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: 2,
+  },
+  roleBadge: {
+    fontSize: 11,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 999,
+    backgroundColor: "rgba(34,197,94,0.2)",
+    color: "#bbf7d0",
+    marginRight: 6,
+  },
+  msgType: {
+    fontSize: 11,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 999,
+    backgroundColor: "rgba(59,130,246,0.2)",
+    color: "#bfdbfe",
+  },
+  msgMetaSmall: {
+    marginLeft: 8,
+    fontSize: 11,
+    color: "#9ca3af",
+  },
+  msgText: {
+    marginTop: 6,
+    fontSize: 13,
+    color: "#f9fafb",
+  },
+  suggestionsContainer: {
+    marginTop: 4,
+    borderWidth: 1,
+    borderColor: "#334155",
+    borderRadius: 10,
+    overflow: "hidden",
+  },
+  suggestionItem: {
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+    backgroundColor: "#020617",
+    borderBottomWidth: 1,
+    borderBottomColor: "#1f2937",
+  },
+  suggestionText: {
+    fontSize: 13,
+    color: "#e5e7eb",
+  },
+});
