@@ -59,9 +59,25 @@ export default function ReportsScreen() {
       return;
     }
 
+    const fmt = (d: Date) => {
+      const yy = d.getFullYear();
+      const mm = (d.getMonth() + 1).toString().padStart(2, "0");
+      const dd = d.getDate().toString().padStart(2, "0");
+      return `${yy}-${mm}-${dd}`;
+    };
+
+    const fromStr = fmt(fromDate);
+    const toStr = fmt(toDate);
+
     try {
       setLoading(true);
-      const data = await fetchReport(m, y, employeeId || undefined);
+      const data = await fetchReport(
+        m,
+        y,
+        employeeId || undefined,
+        fromStr,
+        toStr
+      );
       setReport(data);
     } catch (e: any) {
       Alert.alert("Error", e?.message || "Failed to load report");
@@ -131,7 +147,6 @@ export default function ReportsScreen() {
             <View style={styles.filterCard}>
               <Text style={styles.filterLabel}>Filters</Text>
 
-              {/* From / To date selectors */}
               <View style={styles.dateRow}>
                 <View style={styles.dateColumn}>
                   <Text style={styles.labelSmall}>From</Text>
@@ -157,7 +172,6 @@ export default function ReportsScreen() {
                 </View>
               </View>
 
-              {/* Employee ID input */}
               <Text style={[styles.labelSmall, { marginTop: 10 }]}>
                 Employee ID
               </Text>
@@ -263,25 +277,11 @@ export default function ReportsScreen() {
 }
 
 const styles = StyleSheet.create({
-  safe: {
-    flex: 1,
-    backgroundColor: "#e5f3ff",
-  },
-  root: {
-    flex: 1,
-    backgroundColor: "#e5f3ff",
-  },
+  safe: { flex: 1, backgroundColor: "#e5f3ff" },
+  root: { flex: 1, backgroundColor: "#e5f3ff" },
   flex: { flex: 1 },
-  backgroundLayer: {
-    ...StyleSheet.absoluteFillObject,
-    overflow: "hidden",
-  },
-  circle: {
-    position: "absolute",
-    width: 220,
-    height: 220,
-    borderRadius: 110,
-  },
+  backgroundLayer: { ...StyleSheet.absoluteFillObject, overflow: "hidden" },
+  circle: { position: "absolute", width: 220, height: 220, borderRadius: 110 },
   circleTop: {
     backgroundColor: "rgba(59,130,246,0.18)",
     top: -70,
@@ -316,10 +316,7 @@ const styles = StyleSheet.create({
     color: "#0f172a",
     marginBottom: 4,
   },
-  subtitle: {
-    fontSize: 13,
-    color: "#64748b",
-  },
+  subtitle: { fontSize: 13, color: "#64748b" },
   filterCard: {
     backgroundColor: "#ffffff",
     borderRadius: 20,
@@ -339,19 +336,9 @@ const styles = StyleSheet.create({
     color: "#0f172a",
     marginBottom: 6,
   },
-  labelSmall: {
-    fontSize: 12,
-    color: "#6b7280",
-    marginBottom: 4,
-  },
-  dateRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-  },
-  dateColumn: {
-    flex: 1,
-    marginRight: 8,
-  },
+  labelSmall: { fontSize: 12, color: "#6b7280", marginBottom: 4 },
+  dateRow: { flexDirection: "row", justifyContent: "space-between" },
+  dateColumn: { flex: 1, marginRight: 8 },
   dateButton: {
     borderWidth: 1,
     borderColor: "#cbd5e1",
@@ -360,10 +347,7 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     backgroundColor: "#f8fafc",
   },
-  dateButtonText: {
-    color: "#0f172a",
-    fontSize: 13,
-  },
+  dateButtonText: { color: "#0f172a", fontSize: 13 },
   employeeRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -380,11 +364,7 @@ const styles = StyleSheet.create({
     fontSize: 13,
     marginRight: 8,
   },
-  hint: {
-    fontSize: 11,
-    color: "#6b7280",
-    marginTop: 6,
-  },
+  hint: { fontSize: 11, color: "#6b7280", marginTop: 6 },
   button: {
     marginTop: 10,
     backgroundColor: "#2563eb",
@@ -392,14 +372,8 @@ const styles = StyleSheet.create({
     paddingVertical: 11,
     alignItems: "center",
   },
-  buttonDisabled: {
-    opacity: 0.7,
-  },
-  buttonText: {
-    color: "#f9fafb",
-    fontWeight: "700",
-    fontSize: 14,
-  },
+  buttonDisabled: { opacity: 0.7 },
+  buttonText: { color: "#f9fafb", fontWeight: "700", fontSize: 14 },
   listWrapper: {
     backgroundColor: "#ffffff",
     borderRadius: 20,
@@ -418,10 +392,7 @@ const styles = StyleSheet.create({
     color: "#0f172a",
     marginBottom: 6,
   },
-  listContent: {
-    paddingTop: 4,
-    paddingBottom: 8,
-  },
+  listContent: { paddingTop: 4, paddingBottom: 8 },
   emptyText: {
     textAlign: "center",
     marginTop: 14,
@@ -441,11 +412,7 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     marginBottom: 2,
   },
-  name: {
-    fontSize: 14,
-    fontWeight: "700",
-    color: "#0f172a",
-  },
+  name: { fontSize: 14, fontWeight: "700", color: "#0f172a" },
   status: {
     fontSize: 11,
     fontWeight: "700",
@@ -462,9 +429,5 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(234,179,8,0.12)",
     color: "#92400e",
   },
-  meta: {
-    fontSize: 12,
-    color: "#6b7280",
-    marginTop: 1,
-  },
+  meta: { fontSize: 12, color: "#6b7280", marginTop: 1 },
 });

@@ -10,6 +10,7 @@ import {
   ScrollView,
   TouchableOpacity,
   SafeAreaView,
+  Alert,
 } from "react-native";
 import DateTimePicker, {
   DateTimePickerEvent,
@@ -18,48 +19,105 @@ import { fetchReport, ReportItem } from "../../services/reportService";
 
 export default function EmployeeHistoryScreen() {
   const today = new Date();
-  const [selectedDate, setSelectedDate] = useState<Date>(today);
-  const [month, setMonth] = useState(today.getMonth() + 1);
-  const [year, setYear] = useState(today.getFullYear());
+
+  // month/year used by backend to choose month bucket
+  const [month, setMonth] = useState(String(today.getMonth() + 1));
+  const [year, setYear] = useState(String(today.getFullYear()));
+
+  const [fromDate, setFromDate] = useState<Date>(today);
+  const [toDate, setToDate] = useState<Date>(today);
+  const [pickerMode, setPickerMode] = useState<"from" | "to">("from");
+  const [showPicker, setShowPicker] = useState(false);
+
   const [report, setReport] = useState<ReportItem[]>([]);
   const [loading, setLoading] = useState(false);
-  const [showPicker, setShowPicker] = useState(false);
 
   const behavior = Platform.OS === "ios" ? "padding" : "height";
 
-  const loadReport = async (m: number, y: number) => {
+  const fmt = (d: Date) => {
+    const yy = d.getFullYear();
+    const mm = (d.getMonth() + 1).toString().padStart(2, "0");
+    const dd = d.getDate().toString().padStart(2, "0");
+    return `${yy}-${mm}-${dd}`;
+  };
+
+  const loadReport = async () => {
+    const m = Number(month);
+    const y = Number(year);
+
+    if (!m || m < 1 || m > 12) {
+      Alert.alert("Validation", "Month must be between 1 and 12");
+      return;
+    }
+    if (!y || y < 2000) {
+      Alert.alert("Validation", "Enter a valid year");
+      return;
+    }
+
+    const fromStr = fmt(fromDate);
+    const toStr = fmt(toDate);
+
     setLoading(true);
     try {
-      const data = await fetchReport(m, y); // current user by token
+      // employee ID is taken from token on backend
+      const data = await fetchReport(m, y, undefined, fromStr, toStr);
       setReport(data);
+    } catch (e: any) {
+      Alert.alert("Error", e?.message || "Failed to load history");
     } finally {
       setLoading(false);
     }
   };
 
+  // initial range = whole current month, then load once
   useEffect(() => {
-    loadReport(month, year);
-  }, [month, year]);
+    const now = new Date();
+    const firstOfMonth = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      1
+    );
+    const lastOfMonth = new Date(
+      now.getFullYear(),
+      now.getMonth() + 1,
+      0
+    );
+    setFromDate(firstOfMonth);
+    setToDate(lastOfMonth);
+    setMonth(String(now.getMonth() + 1));
+    setYear(String(now.getFullYear()));
+  }, []);
 
-  const onChange = (event: DateTimePickerEvent, date?: Date) => {
+  useEffect(() => {
+    loadReport();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const openPicker = (mode: "from" | "to") => {
+    setPickerMode(mode);
+    setShowPicker(true);
+  };
+
+  const onChangeDate = (event: DateTimePickerEvent, date?: Date) => {
     if (Platform.OS !== "ios") {
       setShowPicker(false);
     }
     if (event.type === "dismissed" || !date) return;
 
-    setSelectedDate(date);
-    const m = date.getMonth() + 1;
-    const y = date.getFullYear();
-    setMonth(m);
-    setYear(y);
-  };
-
-  const openPicker = () => {
-    setShowPicker(true);
+    if (pickerMode === "from") {
+      setFromDate(date);
+      const m = date.getMonth() + 1;
+      const y = date.getFullYear();
+      setMonth(String(m));
+      setYear(String(y));
+    } else {
+      setToDate(date);
+    }
   };
 
   const monthYearLabel = () => {
-    return selectedDate.toLocaleString("default", {
+    // label based on fromDate (start of range)
+    return fromDate.toLocaleString("default", {
       month: "short",
       year: "numeric",
     });
@@ -88,7 +146,6 @@ export default function EmployeeHistoryScreen() {
   return (
     <SafeAreaView style={styles.safe}>
       <View style={styles.root}>
-        {/* soft background shapes */}
         <View style={styles.backgroundLayer}>
           <View style={[styles.circle, styles.circleTop]} />
           <View style={[styles.circle, styles.circleBottomLeft]} />
@@ -108,18 +165,49 @@ export default function EmployeeHistoryScreen() {
           >
             <Text style={styles.title}>My attendance</Text>
 
-            {/* month selector */}
+            {/* Month label based on fromDate */}
             <View style={styles.monthRow}>
-              <TouchableOpacity
-                style={styles.monthButton}
-                onPress={openPicker}
-                activeOpacity={0.85}
-              >
-                <Text style={styles.monthButtonText}>
-                  {monthYearLabel()} (tap to change)
-                </Text>
-              </TouchableOpacity>
+              <Text style={styles.monthLabel}>
+                {monthYearLabel()} – select date range
+              </Text>
             </View>
+
+            {/* From / To date selectors */}
+            <View style={styles.dateRow}>
+              <View style={styles.dateColumn}>
+                <Text style={styles.labelSmall}>From</Text>
+                <TouchableOpacity
+                  style={styles.dateButton}
+                  onPress={() => openPicker("from")}
+                >
+                  <Text style={styles.dateButtonText}>
+                    {fromDate.toLocaleDateString()}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+              <View style={styles.dateColumn}>
+                <Text style={styles.labelSmall}>To</Text>
+                <TouchableOpacity
+                  style={styles.dateButton}
+                  onPress={() => openPicker("to")}
+                >
+                  <Text style={styles.dateButtonText}>
+                    {toDate.toLocaleDateString()}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            {/* Apply filters button (like admin screen, but no employee ID) */}
+            <TouchableOpacity
+              style={[styles.button, loading && styles.buttonDisabled]}
+              onPress={loadReport}
+              disabled={loading}
+            >
+              <Text style={styles.buttonText}>
+                {loading ? "Loading..." : "Apply filters"}
+              </Text>
+            </TouchableOpacity>
 
             <FlatList
               data={report}
@@ -147,17 +235,16 @@ export default function EmployeeHistoryScreen() {
               )}
             />
           </ScrollView>
-        </KeyboardAvoidingView>
 
-        {/* Native date picker */}
-        {showPicker && (
-          <DateTimePicker
-            value={selectedDate}
-            mode="date"
-            display={Platform.OS === "ios" ? "spinner" : "calendar"}
-            onChange={onChange}
-          />
-        )}
+          {showPicker && (
+            <DateTimePicker
+              value={pickerMode === "from" ? fromDate : toDate}
+              mode="date"
+              display={Platform.OS === "ios" ? "spinner" : "calendar"}
+              onChange={onChangeDate}
+            />
+          )}
+        </KeyboardAvoidingView>
       </View>
     </SafeAreaView>
   );
@@ -208,21 +295,55 @@ const styles = StyleSheet.create({
   },
   monthRow: {
     alignItems: "center",
-    marginBottom: 12,
+    marginBottom: 8,
     marginTop: 4,
   },
-  monthButton: {
-    paddingHorizontal: 18,
-    paddingVertical: 8,
-    borderRadius: 999,
+  monthLabel: {
+    fontSize: 13,
+    color: "#4b5563",
+    fontWeight: "600",
+  },
+  dateRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginBottom: 10,
+  },
+  dateColumn: {
+    flex: 1,
+    marginRight: 8,
+  },
+  labelSmall: {
+    fontSize: 12,
+    color: "#6b7280",
+    marginBottom: 4,
+  },
+  dateButton: {
     borderWidth: 1,
     borderColor: "#cbd5e1",
+    borderRadius: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 10,
     backgroundColor: "#f8fafc",
   },
-  monthButtonText: {
-    fontSize: 14,
-    fontWeight: "700",
+  dateButtonText: {
     color: "#0f172a",
+    fontSize: 13,
+  },
+  button: {
+    marginTop: 4,
+    marginBottom: 10,
+    backgroundColor: "#2563eb",
+    borderRadius: 999,
+    paddingVertical: 10,
+    alignItems: "center",
+  },
+  buttonDisabled: {
+    opacity: 0.7,
+  },
+  buttonText: {
+    color: "#f9fafb",
+    fontWeight: "700",
+    fontSize: 14,
   },
   listContent: { paddingTop: 8, paddingBottom: 24 },
   card: {

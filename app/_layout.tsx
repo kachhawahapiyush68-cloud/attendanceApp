@@ -12,7 +12,6 @@ function LayoutContent() {
 
   return (
     <>
-      {/* light app, so use dark status bar icons */}
       <StatusBar style="dark" />
       <Stack
         screenOptions={{
