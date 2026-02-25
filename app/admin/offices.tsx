@@ -12,6 +12,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  SafeAreaView,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuthStore } from "../../Store/authStore";
@@ -28,13 +29,11 @@ export default function AdminOfficesScreen() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
-  // new office form
   const [newName, setNewName] = useState("");
   const [newLat, setNewLat] = useState("");
   const [newLng, setNewLng] = useState("");
   const [newRadius, setNewRadius] = useState("150");
 
-  // edit existing radius
   const [selectedOfficeId, setSelectedOfficeId] = useState<number | null>(null);
   const [editRadius, setEditRadius] = useState("");
 
@@ -136,209 +135,232 @@ export default function AdminOfficesScreen() {
 
   if (role !== "admin") {
     return (
-      <View style={styles.center}>
-        <Text style={{ color: "#e5e7eb" }}>Admin only.</Text>
-      </View>
+      <SafeAreaView style={styles.safe}>
+        <View style={styles.center}>
+          <Text style={{ color: "#0f172a" }}>Admin only.</Text>
+        </View>
+      </SafeAreaView>
     );
   }
 
   if (loading) {
     return (
-      <View style={styles.center}>
-        <ActivityIndicator size="large" color="#10b981" />
-      </View>
+      <SafeAreaView style={styles.safe}>
+        <View style={styles.center}>
+          <ActivityIndicator size="large" color="#16a34a" />
+        </View>
+      </SafeAreaView>
     );
   }
 
   const behavior = Platform.OS === "ios" ? "padding" : "height";
 
   return (
-    <View style={styles.root}>
-      <View style={styles.bgTop} />
-      <View style={styles.bgBottom} />
+    <SafeAreaView style={styles.safe}>
+      <View style={styles.root}>
+        {/* light background shapes */}
+        <View style={styles.backgroundLayer}>
+          <View style={[styles.circle, styles.circleTop]} />
+          <View style={[styles.circle, styles.circleBottomLeft]} />
+        </View>
 
-      <KeyboardAvoidingView
-        style={styles.flex}
-        behavior={behavior}
-        keyboardVerticalOffset={Platform.OS === "ios" ? 10 : 60}
-      >
-        <ScrollView
+        <KeyboardAvoidingView
           style={styles.flex}
-          contentContainerStyle={styles.container}
-          keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}
+          behavior={behavior}
+          keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 40}
         >
-          <Text style={styles.title}>Offices</Text>
-          <Text style={styles.subtitle}>
-            Create offices and configure radius for geofencing.
-          </Text>
+          <ScrollView
+            style={styles.flex}
+            contentContainerStyle={styles.container}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+          >
+            <Text style={styles.title}>Offices</Text>
+            <Text style={styles.subtitle}>
+              Create offices and configure radius for geofencing.
+            </Text>
 
-          {/* Create Office */}
-          <View style={styles.card}>
-            <Text style={styles.sectionTitle}>Create new office</Text>
+            {/* Create Office */}
+            <View style={styles.card}>
+              <Text style={styles.sectionTitle}>Create new office</Text>
 
-            <Text style={styles.label}>Office name</Text>
-            <TextInput
-              style={styles.input}
-              value={newName}
-              onChangeText={setNewName}
-              placeholder="e.g. Head Office"
-              placeholderTextColor="#64748b"
-            />
+              <Text style={styles.label}>Office name</Text>
+              <TextInput
+                style={styles.input}
+                value={newName}
+                onChangeText={setNewName}
+                placeholder="e.g. Head Office"
+                placeholderTextColor="#6b7280"
+              />
 
-            <Text style={styles.label}>Latitude (optional)</Text>
-            <TextInput
-              style={styles.input}
-              value={newLat}
-              onChangeText={setNewLat}
-              keyboardType="numeric"
-              placeholder="23.0225"
-              placeholderTextColor="#64748b"
-            />
+              <Text style={styles.label}>Latitude (optional)</Text>
+              <TextInput
+                style={styles.input}
+                value={newLat}
+                onChangeText={setNewLat}
+                keyboardType="numeric"
+                placeholder="23.0225"
+                placeholderTextColor="#6b7280"
+              />
 
-            <Text style={styles.label}>Longitude (optional)</Text>
-            <TextInput
-              style={styles.input}
-              value={newLng}
-              onChangeText={setNewLng}
-              keyboardType="numeric"
-              placeholder="72.5714"
-              placeholderTextColor="#64748b"
-            />
+              <Text style={styles.label}>Longitude (optional)</Text>
+              <TextInput
+                style={styles.input}
+                value={newLng}
+                onChangeText={setNewLng}
+                keyboardType="numeric"
+                placeholder="72.5714"
+                placeholderTextColor="#6b7280"
+              />
 
-            <Text style={styles.label}>Radius (meters)</Text>
-            <TextInput
-              style={styles.input}
-              value={newRadius}
-              onChangeText={setNewRadius}
-              keyboardType="numeric"
-              placeholder="150"
-              placeholderTextColor="#64748b"
-            />
+              <Text style={styles.label}>Radius (meters)</Text>
+              <TextInput
+                style={styles.input}
+                value={newRadius}
+                onChangeText={setNewRadius}
+                keyboardType="numeric"
+                placeholder="150"
+                placeholderTextColor="#6b7280"
+              />
 
-            <TouchableOpacity
-              style={[styles.button, saving && styles.buttonDisabled]}
-              disabled={saving}
-              onPress={handleCreateOffice}
-            >
-              {saving ? (
-                <ActivityIndicator color="#fff" size="small" />
-              ) : (
-                <>
-                  <Ionicons name="add-circle-outline" size={18} color="#fff" />
-                  <Text style={styles.buttonText}>Create office</Text>
-                </>
-              )}
-            </TouchableOpacity>
-          </View>
-
-          {/* List + edit radius */}
-          <View style={styles.card}>
-            <Text style={styles.sectionTitle}>Existing offices</Text>
-
-            {offices.length === 0 ? (
-              <Text style={styles.emptyText}>No offices created yet.</Text>
-            ) : (
-              <>
-                <FlatList
-                  data={offices}
-                  keyExtractor={(item) => String(item.id)}
-                  scrollEnabled={false}
-                  renderItem={({ item }) => {
-                    const selected = item.id === selectedOfficeId;
-                    return (
-                      <TouchableOpacity
-                        style={[
-                          styles.officeRow,
-                          selected && styles.officeRowSelected,
-                        ]}
-                        onPress={() => handleSelectOffice(item)}
-                      >
-                        <View style={{ flex: 1 }}>
-                          <Text style={styles.officeName}>
-                            #{item.id} • {item.name}
-                          </Text>
-                          <Text style={styles.officeMeta}>
-                            Radius: {item.radius_meters} m
-                          </Text>
-                        </View>
-                        {selected && (
-                          <Ionicons
-                            name="checkmark-circle"
-                            size={20}
-                            color="#22c55e"
-                          />
-                        )}
-                      </TouchableOpacity>
-                    );
-                  }}
-                />
-
-                {selectedOfficeId !== null && (
+              <TouchableOpacity
+                style={[styles.button, saving && styles.buttonDisabled]}
+                disabled={saving}
+                onPress={handleCreateOffice}
+              >
+                {saving ? (
+                  <ActivityIndicator color="#fff" size="small" />
+                ) : (
                   <>
-                    <Text style={[styles.label, { marginTop: 12 }]}>
-                      Update radius (meters)
-                    </Text>
-                    <TextInput
-                      style={styles.input}
-                      value={editRadius}
-                      onChangeText={setEditRadius}
-                      keyboardType="numeric"
-                      placeholder="150"
-                      placeholderTextColor="#64748b"
+                    <Ionicons
+                      name="add-circle-outline"
+                      size={18}
+                      color="#fff"
                     />
-
-                    <TouchableOpacity
-                      style={[styles.button, saving && styles.buttonDisabled]}
-                      disabled={saving}
-                      onPress={handleUpdateRadius}
-                    >
-                      {saving ? (
-                        <ActivityIndicator color="#fff" size="small" />
-                      ) : (
-                        <>
-                          <Ionicons name="save-outline" size={18} color="#fff" />
-                          <Text style={styles.buttonText}>Save radius</Text>
-                        </>
-                      )}
-                    </TouchableOpacity>
+                    <Text style={styles.buttonText}>Create office</Text>
                   </>
                 )}
-              </>
-            )}
-          </View>
-        </ScrollView>
-      </KeyboardAvoidingView>
-    </View>
+              </TouchableOpacity>
+            </View>
+
+            {/* List + edit radius */}
+            <View style={styles.card}>
+              <Text style={styles.sectionTitle}>Existing offices</Text>
+
+              {offices.length === 0 ? (
+                <Text style={styles.emptyText}>No offices created yet.</Text>
+              ) : (
+                <>
+                  <FlatList
+                    data={offices}
+                    keyExtractor={(item) => String(item.id)}
+                    scrollEnabled={false}
+                    renderItem={({ item }) => {
+                      const selected = item.id === selectedOfficeId;
+                      return (
+                        <TouchableOpacity
+                          style={[
+                            styles.officeRow,
+                            selected && styles.officeRowSelected,
+                          ]}
+                          onPress={() => handleSelectOffice(item)}
+                        >
+                          <View style={{ flex: 1 }}>
+                            <Text style={styles.officeName}>
+                              #{item.id} • {item.name}
+                            </Text>
+                            <Text style={styles.officeMeta}>
+                              Radius: {item.radius_meters} m
+                            </Text>
+                          </View>
+                          {selected && (
+                            <Ionicons
+                              name="checkmark-circle"
+                              size={20}
+                              color="#16a34a"
+                            />
+                          )}
+                        </TouchableOpacity>
+                      );
+                    }}
+                  />
+
+                  {selectedOfficeId !== null && (
+                    <>
+                      <Text style={[styles.label, { marginTop: 12 }]}>
+                        Update radius (meters)
+                      </Text>
+                      <TextInput
+                        style={styles.input}
+                        value={editRadius}
+                        onChangeText={setEditRadius}
+                        keyboardType="numeric"
+                        placeholder="150"
+                        placeholderTextColor="#6b7280"
+                      />
+
+                      <TouchableOpacity
+                        style={[
+                          styles.button,
+                          saving && styles.buttonDisabled,
+                        ]}
+                        disabled={saving}
+                        onPress={handleUpdateRadius}
+                      >
+                        {saving ? (
+                          <ActivityIndicator color="#fff" size="small" />
+                        ) : (
+                          <>
+                            <Ionicons
+                              name="save-outline"
+                              size={18}
+                              color="#fff"
+                            />
+                            <Text style={styles.buttonText}>Save radius</Text>
+                          </>
+                        )}
+                      </TouchableOpacity>
+                    </>
+                  )}
+                </>
+              )}
+            </View>
+          </ScrollView>
+        </KeyboardAvoidingView>
+      </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: "#020617" },
+  safe: { flex: 1, backgroundColor: "#e5f3ff" },
+  root: { flex: 1, backgroundColor: "#e5f3ff" },
   flex: { flex: 1 },
-  bgTop: {
+  backgroundLayer: {
+    ...StyleSheet.absoluteFillObject,
+    overflow: "hidden",
+  },
+  circle: {
     position: "absolute",
+    width: 220,
+    height: 220,
+    borderRadius: 110,
+  },
+  circleTop: {
+    backgroundColor: "rgba(59,130,246,0.18)",
     top: -70,
     right: -50,
-    width: 220,
-    height: 220,
-    borderRadius: 200,
-    backgroundColor: "rgba(59,130,246,0.25)",
   },
-  bgBottom: {
-    position: "absolute",
-    bottom: -80,
+  circleBottomLeft: {
+    backgroundColor: "rgba(16,185,129,0.16)",
+    bottom: -90,
     left: -60,
-    width: 220,
-    height: 220,
-    borderRadius: 200,
-    backgroundColor: "rgba(16,185,129,0.25)",
   },
   center: {
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#020617",
+    backgroundColor: "#e5f3ff",
   },
   container: {
     paddingHorizontal: 16,
@@ -346,50 +368,55 @@ const styles = StyleSheet.create({
     paddingBottom: 24,
   },
   title: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: "800",
     marginBottom: 4,
-    color: "#f9fafb",
+    color: "#0f172a",
   },
   subtitle: {
     fontSize: 13,
-    color: "#9ca3af",
+    color: "#64748b",
     marginBottom: 16,
   },
   card: {
-    backgroundColor: "rgba(15,23,42,0.98)",
+    backgroundColor: "#ffffff",
     borderRadius: 18,
     padding: 16,
     marginBottom: 16,
     borderWidth: 1,
-    borderColor: "rgba(148,163,184,0.5)",
+    borderColor: "rgba(148,163,184,0.6)",
+    shadowColor: "#0f172a",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 10,
+    elevation: 3,
   },
   sectionTitle: {
     fontSize: 15,
     fontWeight: "700",
-    color: "#e5e7eb",
+    color: "#0f172a",
     marginBottom: 8,
   },
   label: {
     fontSize: 13,
     marginBottom: 4,
     fontWeight: "600",
-    color: "#e5e7eb",
+    color: "#0f172a",
   },
   input: {
     borderWidth: 1,
-    borderColor: "#1f2937",
+    borderColor: "#cbd5e1",
     borderRadius: 10,
     paddingHorizontal: 10,
     paddingVertical: 8,
     marginBottom: 8,
-    backgroundColor: "#020617",
-    color: "#e5e7eb",
+    backgroundColor: "#f8fafc",
+    color: "#0f172a",
     fontSize: 13,
   },
   button: {
     flexDirection: "row",
-    backgroundColor: "#10b981",
+    backgroundColor: "#16a34a",
     paddingVertical: 10,
     borderRadius: 999,
     alignItems: "center",
@@ -406,7 +433,7 @@ const styles = StyleSheet.create({
     marginLeft: 6,
   },
   emptyText: {
-    color: "#9ca3af",
+    color: "#6b7280",
     fontSize: 13,
     marginTop: 8,
   },
@@ -419,15 +446,15 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   officeRowSelected: {
-    backgroundColor: "rgba(37,99,235,0.25)",
+    backgroundColor: "#dbeafe",
   },
   officeName: {
-    color: "#e5e7eb",
+    color: "#0f172a",
     fontSize: 13,
     fontWeight: "600",
   },
   officeMeta: {
-    color: "#9ca3af",
+    color: "#6b7280",
     fontSize: 11,
   },
 });

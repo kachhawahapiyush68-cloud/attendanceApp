@@ -12,6 +12,7 @@ import {
   ScrollView,
   KeyboardAvoidingView,
   Platform,
+  SafeAreaView,
 } from "react-native";
 import * as ImagePicker from "expo-image-picker";
 import * as Location from "expo-location";
@@ -167,243 +168,260 @@ export default function RegisterEmployee() {
   const behavior = Platform.OS === "ios" ? "padding" : "height";
 
   return (
-    <View style={styles.root}>
-      <View style={styles.bgTop} />
-      <View style={styles.bgBottom} />
+    <SafeAreaView style={styles.safe}>
+      <View style={styles.root}>
+        <View style={styles.backgroundLayer}>
+          <View style={[styles.circle, styles.circleTop]} />
+          <View style={[styles.circle, styles.circleBottomLeft]} />
+        </View>
 
-      <KeyboardAvoidingView
-        style={styles.flex}
-        behavior={behavior}
-        keyboardVerticalOffset={Platform.OS === "ios" ? 10 : 80}
-      >
-        <ScrollView
-          contentContainerStyle={styles.scrollContent}
-          keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}
+        <KeyboardAvoidingView
+          style={styles.flex}
+          behavior={behavior}
+          keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 60}
         >
-          <View style={styles.header}>
-            <Text style={styles.title}>Register employee</Text>
-            <Text style={styles.subtitle}>
-              Create a new account with selfie and GPS home location.
-            </Text>
-          </View>
-
-          <View style={styles.formCard}>
-            {/* Name */}
-            <View style={styles.inputContainer}>
-              <View style={[styles.fieldIcon, styles.nameIcon]} />
-              <TextInput
-                ref={nameRef}
-                style={styles.input}
-                placeholder="Full name *"
-                placeholderTextColor="#64748b"
-                value={name}
-                onChangeText={setName}
-                returnKeyType="next"
-                onSubmitEditing={() => focusNextField(0)}
-                blurOnSubmit={false}
-                editable={!loading}
-              />
-            </View>
-
-            {/* User ID */}
-            <View style={styles.inputContainer}>
-              <View style={[styles.fieldIcon, styles.userIcon]} />
-              <TextInput
-                ref={userIdRef}
-                style={styles.input}
-                placeholder="User ID (login) *"
-                placeholderTextColor="#64748b"
-                value={userId}
-                onChangeText={setUserId}
-                autoCapitalize="none"
-                returnKeyType="next"
-                onSubmitEditing={() => focusNextField(1)}
-                blurOnSubmit={false}
-                editable={!loading}
-              />
-            </View>
-
-            {/* PIN */}
-            <View style={styles.inputContainer}>
-              <View style={[styles.fieldIcon, styles.pinIcon]} />
-              <TextInput
-                ref={pinRef}
-                style={styles.input}
-                placeholder="PIN (4–8 digits) *"
-                placeholderTextColor="#64748b"
-                value={pin}
-                onChangeText={setPin}
-                keyboardType="numeric"
-                secureTextEntry
-                maxLength={8}
-                returnKeyType="next"
-                onSubmitEditing={() => focusNextField(2)}
-                blurOnSubmit={false}
-                editable={!loading}
-              />
-            </View>
-
-            {/* Email */}
-            <View style={styles.inputContainer}>
-              <View style={[styles.fieldIcon, styles.emailIcon]} />
-              <TextInput
-                ref={emailRef}
-                style={styles.input}
-                placeholder="Email *"
-                placeholderTextColor="#64748b"
-                value={email}
-                onChangeText={setEmail}
-                autoCapitalize="none"
-                keyboardType="email-address"
-                returnKeyType="next"
-                onSubmitEditing={() => focusNextField(3)}
-                blurOnSubmit={false}
-                editable={!loading}
-              />
-            </View>
-
-            {/* Address */}
-            <View style={styles.addressContainer}>
-              <View style={[styles.fieldIcon, styles.addressIcon]} />
-              <TextInput
-                ref={addressRef}
-                style={[styles.input, styles.textArea]}
-                placeholder="Address *"
-                placeholderTextColor="#64748b"
-                value={address}
-                onChangeText={setAddress}
-                multiline
-                numberOfLines={3}
-                textAlignVertical="top"
-                returnKeyType="next"
-                onSubmitEditing={() => focusNextField(4)}
-                blurOnSubmit={false}
-                editable={!loading}
-              />
-            </View>
-
-            {/* Mobile */}
-            <View style={styles.inputContainer}>
-              <View style={[styles.fieldIcon, styles.phoneIcon]} />
-              <TextInput
-                ref={mobileRef}
-                style={styles.input}
-                placeholder="Mobile (10 digits) *"
-                placeholderTextColor="#64748b"
-                value={mobileNo}
-                onChangeText={setMobileNo}
-                keyboardType="phone-pad"
-                maxLength={10}
-                returnKeyType="done"
-                editable={!loading}
-              />
-            </View>
-
-            {/* Photo (selfie required) */}
-            <View style={styles.photoSection}>
-              {photo ? (
-                <View style={styles.photoPreviewContainer}>
-                  <Image
-                    source={{ uri: `data:image/jpeg;base64,${photo}` }}
-                    style={styles.photoPreview}
-                  />
-                  <TouchableOpacity
-                    style={styles.removeBtn}
-                    onPress={() => setPhoto(null)}
-                    disabled={loading}
-                  >
-                    <Text style={styles.removeText}>✕</Text>
-                  </TouchableOpacity>
-                </View>
-              ) : (
-                <View style={styles.photoButtonsRow}>
-                  <TouchableOpacity
-                    style={styles.photoActionBtn}
-                    onPress={pickSelfieFromCamera}
-                    disabled={loading}
-                  >
-                    <Text style={styles.photoActionText}>Take selfie *</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={styles.photoActionBtnSecondary}
-                    onPress={pickImageFromGallery}
-                    disabled={loading}
-                  >
-                    <Text style={styles.photoActionTextSecondary}>
-                      From gallery
-                    </Text>
-                  </TouchableOpacity>
-                </View>
-              )}
-              {!photo && (
-                <Text style={styles.photoHint}>
-                  Selfie is required for registration.
-                </Text>
-              )}
-            </View>
-
-            {/* Location button */}
-            <View style={styles.locationSection}>
-              <TouchableOpacity
-                style={[styles.locationBtn, locLoading && styles.disabledBtn]}
-                onPress={getCurrentLocation}
-                disabled={locLoading || loading}
-              >
-                {locLoading ? (
-                  <ActivityIndicator color="#fff" size="small" />
-                ) : (
-                  <Text style={styles.locationText}>Capture GPS location</Text>
-                )}
-              </TouchableOpacity>
-              <Text style={styles.locationInfo}>
-                {latitude && longitude
-                  ? `Lat: ${latitude.toFixed(5)}, Lon: ${longitude.toFixed(5)}`
-                  : "No location set yet."}
+          <ScrollView
+            contentContainerStyle={styles.scrollContent}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+          >
+            <View style={styles.header}>
+              <Text style={styles.title}>Register employee</Text>
+              <Text style={styles.subtitle}>
+                Create a new account with selfie and GPS home location.
               </Text>
             </View>
 
-            {/* Register Button */}
-            <TouchableOpacity
-              style={[styles.registerBtn, loading && styles.disabledBtn]}
-              onPress={handleRegister}
-              disabled={loading}
-            >
-              {loading ? (
-                <ActivityIndicator color="#fff" size="small" />
-              ) : (
-                <Text style={styles.registerText}>Register employee</Text>
-              )}
-            </TouchableOpacity>
-          </View>
-        </ScrollView>
-      </KeyboardAvoidingView>
-    </View>
+            <View style={styles.formCard}>
+              {/* Name */}
+              <View style={styles.inputContainer}>
+                <View style={[styles.fieldIcon, styles.nameIcon]} />
+                <TextInput
+                  ref={nameRef}
+                  style={styles.input}
+                  placeholder="Full name *"
+                  placeholderTextColor="#64748b"
+                  value={name}
+                  onChangeText={setName}
+                  returnKeyType="next"
+                  onSubmitEditing={() => focusNextField(0)}
+                  blurOnSubmit={false}
+                  editable={!loading}
+                />
+              </View>
+
+              {/* User ID */}
+              <View style={styles.inputContainer}>
+                <View style={[styles.fieldIcon, styles.userIcon]} />
+                <TextInput
+                  ref={userIdRef}
+                  style={styles.input}
+                  placeholder="User ID (login) *"
+                  placeholderTextColor="#64748b"
+                  value={userId}
+                  onChangeText={setUserId}
+                  autoCapitalize="none"
+                  returnKeyType="next"
+                  onSubmitEditing={() => focusNextField(1)}
+                  blurOnSubmit={false}
+                  editable={!loading}
+                />
+              </View>
+
+              {/* PIN */}
+              <View style={styles.inputContainer}>
+                <View style={[styles.fieldIcon, styles.pinIcon]} />
+                <TextInput
+                  ref={pinRef}
+                  style={styles.input}
+                  placeholder="PIN (4–8 digits) *"
+                  placeholderTextColor="#64748b"
+                  value={pin}
+                  onChangeText={setPin}
+                  keyboardType="numeric"
+                  secureTextEntry
+                  maxLength={8}
+                  returnKeyType="next"
+                  onSubmitEditing={() => focusNextField(2)}
+                  blurOnSubmit={false}
+                  editable={!loading}
+                />
+              </View>
+
+              {/* Email */}
+              <View style={styles.inputContainer}>
+                <View style={[styles.fieldIcon, styles.emailIcon]} />
+                <TextInput
+                  ref={emailRef}
+                  style={styles.input}
+                  placeholder="Email *"
+                  placeholderTextColor="#64748b"
+                  value={email}
+                  onChangeText={setEmail}
+                  autoCapitalize="none"
+                  keyboardType="email-address"
+                  returnKeyType="next"
+                  onSubmitEditing={() => focusNextField(3)}
+                  blurOnSubmit={false}
+                  editable={!loading}
+                />
+              </View>
+
+              {/* Address */}
+              <View style={styles.addressContainer}>
+                <View style={[styles.fieldIcon, styles.addressIcon]} />
+                <TextInput
+                  ref={addressRef}
+                  style={[styles.input, styles.textArea]}
+                  placeholder="Address *"
+                  placeholderTextColor="#64748b"
+                  value={address}
+                  onChangeText={setAddress}
+                  multiline
+                  numberOfLines={3}
+                  textAlignVertical="top"
+                  returnKeyType="next"
+                  onSubmitEditing={() => focusNextField(4)}
+                  blurOnSubmit={false}
+                  editable={!loading}
+                />
+              </View>
+
+              {/* Mobile */}
+              <View style={styles.inputContainer}>
+                <View style={[styles.fieldIcon, styles.phoneIcon]} />
+                <TextInput
+                  ref={mobileRef}
+                  style={styles.input}
+                  placeholder="Mobile (10 digits) *"
+                  placeholderTextColor="#64748b"
+                  value={mobileNo}
+                  onChangeText={setMobileNo}
+                  keyboardType="phone-pad"
+                  maxLength={10}
+                  returnKeyType="done"
+                  editable={!loading}
+                />
+              </View>
+
+              {/* Photo (selfie) */}
+              <View style={styles.photoSection}>
+                {photo ? (
+                  <View style={styles.photoPreviewContainer}>
+                    <Image
+                      source={{ uri: `data:image/jpeg;base64,${photo}` }}
+                      style={styles.photoPreview}
+                    />
+                    <TouchableOpacity
+                      style={styles.removeBtn}
+                      onPress={() => setPhoto(null)}
+                      disabled={loading}
+                    >
+                      <Text style={styles.removeText}>✕</Text>
+                    </TouchableOpacity>
+                  </View>
+                ) : (
+                  <View style={styles.photoButtonsRow}>
+                    <TouchableOpacity
+                      style={styles.photoActionBtn}
+                      onPress={pickSelfieFromCamera}
+                      disabled={loading}
+                    >
+                      <Text style={styles.photoActionText}>Take selfie *</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={styles.photoActionBtnSecondary}
+                      onPress={pickImageFromGallery}
+                      disabled={loading}
+                    >
+                      <Text style={styles.photoActionTextSecondary}>
+                        From gallery
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
+                {!photo && (
+                  <Text style={styles.photoHint}>
+                    Selfie is required for registration.
+                  </Text>
+                )}
+              </View>
+
+              {/* Location */}
+              <View style={styles.locationSection}>
+                <TouchableOpacity
+                  style={[
+                    styles.locationBtn,
+                    (locLoading || loading) && styles.disabledBtn,
+                  ]}
+                  onPress={getCurrentLocation}
+                  disabled={locLoading || loading}
+                >
+                  {locLoading ? (
+                    <ActivityIndicator color="#fff" size="small" />
+                  ) : (
+                    <Text style={styles.locationText}>
+                      Capture GPS location
+                    </Text>
+                  )}
+                </TouchableOpacity>
+                <Text style={styles.locationInfo}>
+                  {latitude && longitude
+                    ? `Lat: ${latitude.toFixed(5)}, Lon: ${longitude.toFixed(
+                        5
+                      )}`
+                    : "No location set yet."}
+                </Text>
+              </View>
+
+              {/* Register */}
+              <TouchableOpacity
+                style={[styles.registerBtn, loading && styles.disabledBtn]}
+                onPress={handleRegister}
+                disabled={loading}
+              >
+                {loading ? (
+                  <ActivityIndicator color="#fff" size="small" />
+                ) : (
+                  <Text style={styles.registerText}>Register employee</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </ScrollView>
+        </KeyboardAvoidingView>
+      </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  safe: {
+    flex: 1,
+    backgroundColor: "#e5f3ff",
+  },
   root: {
     flex: 1,
-    backgroundColor: "#020617",
+    backgroundColor: "#e5f3ff",
   },
-  bgTop: {
+  backgroundLayer: {
+    ...StyleSheet.absoluteFillObject,
+    overflow: "hidden",
+  },
+  circle: {
     position: "absolute",
-    top: -70,
-    right: -60,
     width: 260,
     height: 260,
-    borderRadius: 200,
-    backgroundColor: "rgba(37,99,235,0.25)",
+    borderRadius: 130,
   },
-  bgBottom: {
-    position: "absolute",
-    bottom: -80,
-    left: -70,
-    width: 260,
-    height: 260,
-    borderRadius: 200,
-    backgroundColor: "rgba(16,185,129,0.25)",
+  circleTop: {
+    backgroundColor: "rgba(59,130,246,0.18)",
+    top: -90,
+    right: -70,
+  },
+  circleBottomLeft: {
+    backgroundColor: "rgba(16,185,129,0.16)",
+    bottom: -110,
+    left: -80,
   },
   flex: { flex: 1 },
   scrollContent: {
@@ -412,53 +430,63 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
   },
   header: {
-    backgroundColor: "rgba(15,23,42,0.98)",
+    backgroundColor: "#ffffff",
     marginBottom: 18,
     paddingVertical: 20,
     paddingHorizontal: 20,
     borderRadius: 22,
     borderWidth: 1,
-    borderColor: "rgba(148,163,184,0.5)",
+    borderColor: "rgba(148,163,184,0.6)",
+    shadowColor: "#0f172a",
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 3,
   },
   title: {
     fontSize: 22,
     fontWeight: "900",
-    color: "#f9fafb",
+    color: "#0f172a",
     marginBottom: 4,
   },
   subtitle: {
     fontSize: 13,
-    color: "#9ca3af",
+    color: "#64748b",
   },
   formCard: {
-    backgroundColor: "rgba(15,23,42,0.97)",
+    backgroundColor: "#ffffff",
     borderRadius: 26,
     padding: 20,
     borderWidth: 1,
-    borderColor: "rgba(30,64,175,0.5)",
+    borderColor: "rgba(148,163,184,0.6)",
+    shadowColor: "#0f172a",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.05,
+    shadowRadius: 10,
+    elevation: 2,
   },
   inputContainer: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#020617",
+    backgroundColor: "#f8fafc",
     borderRadius: 16,
     marginBottom: 14,
     paddingHorizontal: 16,
     height: 54,
     borderWidth: 1,
-    borderColor: "#1f2937",
+    borderColor: "#cbd5e1",
   },
   addressContainer: {
     flexDirection: "row",
     alignItems: "flex-start",
-    backgroundColor: "#020617",
+    backgroundColor: "#f8fafc",
     borderRadius: 16,
     marginBottom: 14,
     paddingHorizontal: 16,
     paddingTop: 12,
     height: 80,
     borderWidth: 1,
-    borderColor: "#1f2937",
+    borderColor: "#cbd5e1",
   },
   fieldIcon: {
     width: 24,
@@ -476,7 +504,7 @@ const styles = StyleSheet.create({
   input: {
     flex: 1,
     fontSize: 14,
-    color: "#e5e7eb",
+    color: "#0f172a",
   },
   textArea: {
     paddingVertical: 4,
@@ -501,7 +529,7 @@ const styles = StyleSheet.create({
     position: "absolute",
     top: 4,
     right: 4,
-    backgroundColor: "rgba(239,68,68,0.9)",
+    backgroundColor: "rgba(239,68,68,0.95)",
     borderRadius: 14,
     paddingHorizontal: 8,
     paddingVertical: 2,
@@ -515,7 +543,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "center",
     gap: 10,
-  },
+  } as any,
   photoActionBtn: {
     paddingHorizontal: 14,
     paddingVertical: 10,
@@ -526,9 +554,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 10,
     borderRadius: 999,
-    backgroundColor: "#1f2937",
-    borderWidth: 1,
-    borderColor: "#374151",
+    backgroundColor: "#e5e7eb",
   },
   photoActionText: {
     color: "#f9fafb",
@@ -536,14 +562,14 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
   photoActionTextSecondary: {
-    color: "#e5e7eb",
+    color: "#111827",
     fontSize: 12,
     fontWeight: "600",
   },
   photoHint: {
     marginTop: 6,
     fontSize: 11,
-    color: "#9ca3af",
+    color: "#6b7280",
   },
   locationSection: {
     marginBottom: 18,
@@ -562,7 +588,7 @@ const styles = StyleSheet.create({
   locationInfo: {
     marginTop: 6,
     fontSize: 12,
-    color: "#9ca3af",
+    color: "#64748b",
     textAlign: "center",
   },
   registerBtn: {

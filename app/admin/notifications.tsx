@@ -11,6 +11,7 @@ import {
   Platform,
   ActivityIndicator,
   KeyboardAvoidingView,
+  SafeAreaView,
 } from "react-native";
 import { fetchEmployees, Employee } from "../../services/employeeService";
 import {
@@ -26,15 +27,15 @@ export default function AdminNotificationsScreen() {
   const [message, setMessage] = useState("");
   const [audience, setAudience] = useState<Audience>("all");
   const [targetUserId, setTargetUserId] = useState("");
-  const [searchEmployee, setSearchEmployee] = useState(""); // search for employee
-  const [searchNotification, setSearchNotification] = useState(""); // search for notifications
+  const [searchEmployee, setSearchEmployee] = useState("");
+  const [searchNotification, setSearchNotification] = useState("");
   const [loading, setLoading] = useState(false);
   const [employees, setEmployees] = useState<Employee[]>([]);
 
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [loadingNotifications, setLoadingNotifications] = useState(false);
 
-  // ================== EMPLOYEES ==================
+  // EMPLOYEES
   useEffect(() => {
     (async () => {
       try {
@@ -46,7 +47,6 @@ export default function AdminNotificationsScreen() {
     })();
   }, []);
 
-  // filter employees by search text for single audience
   const filteredEmployees = useMemo(
     () =>
       employees.filter((e) => {
@@ -60,22 +60,14 @@ export default function AdminNotificationsScreen() {
     [employees, searchEmployee]
   );
 
-  // ================== NOTIFICATIONS ==================
+  // NOTIFICATIONS
   const loadNotifications = useCallback(async () => {
     try {
       setLoadingNotifications(true);
       const data = await fetchAdminNotifications();
       setNotifications(data);
     } catch (e: any) {
-      console.log(
-        "[AdminNotificationsScreen] loadNotifications error:",
-        e?.message
-      );
-      console.log(
-        "[AdminNotificationsScreen] error response:",
-        e?.response?.status,
-        e?.response?.data
-      );
+      console.log("loadNotifications error:", e?.message);
     } finally {
       setLoadingNotifications(false);
     }
@@ -85,10 +77,8 @@ export default function AdminNotificationsScreen() {
     loadNotifications();
   }, [loadNotifications]);
 
-  // search filter for notifications (title, message, userName, type label)
   const filteredNotifications = useMemo(() => {
     if (!searchNotification.trim()) return notifications;
-
     const q = searchNotification.toLowerCase();
 
     return notifications.filter((item) => {
@@ -115,7 +105,7 @@ export default function AdminNotificationsScreen() {
     });
   }, [notifications, searchNotification]);
 
-  // ================== FORM ==================
+  // FORM
   const validate = () => {
     if (title.trim().length < 3) return "Title must be at least 3 characters";
     if (message.trim().length < 5)
@@ -213,178 +203,206 @@ export default function AdminNotificationsScreen() {
   };
 
   return (
-    <View style={styles.root}>
-      <KeyboardAvoidingView
-        style={styles.flex}
-        behavior={behavior}
-        keyboardVerticalOffset={Platform.OS === "ios" ? 10 : 0}
-      >
-        <ScrollView
-          style={styles.container}
-          contentContainerStyle={styles.content}
-          keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}
+    <SafeAreaView style={styles.safe}>
+      <View style={styles.root}>
+        {/* light background shapes */}
+        <View style={styles.backgroundLayer}>
+          <View style={[styles.circle, styles.circleTop]} />
+          <View style={[styles.circle, styles.circleBottomLeft]} />
+        </View>
+
+        <KeyboardAvoidingView
+          style={styles.flex}
+          behavior={behavior}
+          keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 40}
         >
-          <Text style={styles.header}>Admin Notifications</Text>
-          <Text style={styles.subheader}>
-            Send important messages to all employees or a specific user.
-          </Text>
+          <ScrollView
+            style={styles.container}
+            contentContainerStyle={styles.content}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+          >
+            <Text style={styles.header}>Admin notifications</Text>
+            <Text style={styles.subheader}>
+              Send important messages to all employees or a specific user.
+            </Text>
 
-          {/* SEND FORM */}
-          <View style={styles.card}>
-            <Text style={styles.label}>Title *</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Short title"
-              placeholderTextColor="#6b7280"
-              value={title}
-              onChangeText={setTitle}
-              returnKeyType="next"
-            />
+            {/* SEND FORM */}
+            <View style={styles.card}>
+              <Text style={styles.label}>Title *</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="Short title"
+                placeholderTextColor="#6b7280"
+                value={title}
+                onChangeText={setTitle}
+                returnKeyType="next"
+              />
 
-            <Text style={styles.label}>Message *</Text>
-            <TextInput
-              style={[styles.input, styles.textArea]}
-              placeholder="Type your message..."
-              placeholderTextColor="#6b7280"
-              value={message}
-              onChangeText={setMessage}
-              multiline
-              numberOfLines={5}
-              textAlignVertical="top"
-            />
+              <Text style={styles.label}>Message *</Text>
+              <TextInput
+                style={[styles.input, styles.textArea]}
+                placeholder="Type your message..."
+                placeholderTextColor="#6b7280"
+                value={message}
+                onChangeText={setMessage}
+                multiline
+                numberOfLines={5}
+                textAlignVertical="top"
+              />
 
-            <Text style={styles.label}>Audience *</Text>
-            <View style={styles.audienceRow}>
-              <TouchableOpacity
-                style={[
-                  styles.audienceChip,
-                  audience === "all" && styles.audienceChipActive,
-                ]}
-                onPress={() => setAudience("all")}
-              >
-                <Text
+              <Text style={styles.label}>Audience *</Text>
+              <View style={styles.audienceRow}>
+                <TouchableOpacity
                   style={[
-                    styles.audienceText,
-                    audience === "all" && styles.audienceTextActive,
+                    styles.audienceChip,
+                    audience === "all" && styles.audienceChipActive,
                   ]}
+                  onPress={() => setAudience("all")}
                 >
-                  All employees
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[
-                  styles.audienceChip,
-                  styles.lastChip,
-                  audience === "single" && styles.audienceChipActive,
-                ]}
-                onPress={() => setAudience("single")}
-              >
-                <Text
-                  style={[
-                    styles.audienceText,
-                    audience === "single" && styles.audienceTextActive,
-                  ]}
-                >
-                  Single employee
-                </Text>
-              </TouchableOpacity>
-            </View>
-
-            {audience === "single" && (
-              <>
-                <Text style={styles.label}>Employee (search & tap) *</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="Search by ID or name..."
-                  placeholderTextColor="#6b7280"
-                  value={searchEmployee}
-                  onChangeText={(text) => {
-                    setSearchEmployee(text);
-                    // optional: only bind to targetUserId when it's an exact ID
-                    setTargetUserId(text);
-                  }}
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                  returnKeyType="done"
-                />
-
-                {filteredEmployees.length > 0 && (
-                  <View style={styles.suggestionsContainer}>
-                    {filteredEmployees.slice(0, 5).map((e) => (
-                      <TouchableOpacity
-                        key={e.user_id}
-                        style={styles.suggestionItem}
-                        onPress={() => {
-                          setTargetUserId(e.user_id);
-                          setSearchEmployee(e.user_id);
-                        }}
-                      >
-                        <Text style={styles.suggestionText}>
-                          {e.user_id} · {e.name || "No name"}
-                        </Text>
-                      </TouchableOpacity>
-                    ))}
-                  </View>
-                )}
-
-                {employees.length > 0 && (
-                  <Text style={styles.hint}>
-                    Example IDs:{" "}
-                    {employees
-                      .slice(0, 3)
-                      .map((e) => e.user_id)
-                      .join(", ")}
-                    {employees.length > 3 ? "..." : ""}
+                  <Text
+                    style={[
+                      styles.audienceText,
+                      audience === "all" && styles.audienceTextActive,
+                    ]}
+                  >
+                    All employees
                   </Text>
-                )}
-              </>
-            )}
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[
+                    styles.audienceChip,
+                    styles.lastChip,
+                    audience === "single" && styles.audienceChipActive,
+                  ]}
+                  onPress={() => setAudience("single")}
+                >
+                  <Text
+                    style={[
+                      styles.audienceText,
+                      audience === "single" && styles.audienceTextActive,
+                    ]}
+                  >
+                    Single employee
+                  </Text>
+                </TouchableOpacity>
+              </View>
 
-            <TouchableOpacity
-              style={[styles.button, loading && styles.buttonDisabled]}
-              onPress={handleSend}
-              disabled={loading}
-            >
-              {loading ? (
-                <ActivityIndicator color="#fff" size="small" />
-              ) : (
-                <Text style={styles.buttonText}>Send Notification</Text>
+              {audience === "single" && (
+                <>
+                  <Text style={styles.label}>Employee (search & tap) *</Text>
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Search by ID or name..."
+                    placeholderTextColor="#6b7280"
+                    value={searchEmployee}
+                    onChangeText={(text) => {
+                      setSearchEmployee(text);
+                      setTargetUserId(text);
+                    }}
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    returnKeyType="done"
+                  />
+
+                  {filteredEmployees.length > 0 && (
+                    <View style={styles.suggestionsContainer}>
+                      {filteredEmployees.slice(0, 5).map((e) => (
+                        <TouchableOpacity
+                          key={e.user_id}
+                          style={styles.suggestionItem}
+                          onPress={() => {
+                            setTargetUserId(e.user_id);
+                            setSearchEmployee(e.user_id);
+                          }}
+                        >
+                          <Text style={styles.suggestionText}>
+                            {e.user_id} · {e.name || "No name"}
+                          </Text>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                  )}
+
+                  {employees.length > 0 && (
+                    <Text style={styles.hint}>
+                      Example IDs:{" "}
+                      {employees
+                        .slice(0, 3)
+                        .map((e) => e.user_id)
+                        .join(", ")}
+                      {employees.length > 3 ? "..." : ""}
+                    </Text>
+                  )}
+                </>
               )}
-            </TouchableOpacity>
-          </View>
 
-          {/* NOTIFICATIONS LIST + SEARCH */}
-          <Text style={styles.sectionHeader}>Messages / Broadcasts</Text>
-
-          <TextInput
-            style={[styles.input, { marginBottom: 8 }]}
-            placeholder="Search notifications (title, message, user, type...)"
-            placeholderTextColor="#6b7280"
-            value={searchNotification}
-            onChangeText={setSearchNotification}
-          />
-
-          {loadingNotifications && notifications.length === 0 ? (
-            <View style={styles.centerBox}>
-              <ActivityIndicator size="small" color="#60a5fa" />
-              <Text style={styles.loadingText}>
-                Loading notifications...
-              </Text>
+              <TouchableOpacity
+                style={[styles.button, loading && styles.buttonDisabled]}
+                onPress={handleSend}
+                disabled={loading}
+              >
+                {loading ? (
+                  <ActivityIndicator color="#fff" size="small" />
+                ) : (
+                  <Text style={styles.buttonText}>Send notification</Text>
+                )}
+              </TouchableOpacity>
             </View>
-          ) : filteredNotifications.length === 0 ? (
-            <Text style={styles.emptyText}>No notifications found.</Text>
-          ) : (
-            filteredNotifications.map(renderNotificationRow)
-          )}
-        </ScrollView>
-      </KeyboardAvoidingView>
-    </View>
+
+            {/* NOTIFICATIONS LIST + SEARCH */}
+            <Text style={styles.sectionHeader}>Messages / broadcasts</Text>
+
+            <TextInput
+              style={[styles.input, { marginBottom: 8 }]}
+              placeholder="Search notifications (title, message, user, type...)"
+              placeholderTextColor="#6b7280"
+              value={searchNotification}
+              onChangeText={setSearchNotification}
+            />
+
+            {loadingNotifications && notifications.length === 0 ? (
+              <View style={styles.centerBox}>
+                <ActivityIndicator size="small" color="#2563eb" />
+                <Text style={styles.loadingText}>
+                  Loading notifications...
+                </Text>
+              </View>
+            ) : filteredNotifications.length === 0 ? (
+              <Text style={styles.emptyText}>No notifications found.</Text>
+            ) : (
+              filteredNotifications.map(renderNotificationRow)
+            )}
+          </ScrollView>
+        </KeyboardAvoidingView>
+      </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: "#020617" },
+  safe: { flex: 1, backgroundColor: "#e5f3ff" },
+  root: { flex: 1, backgroundColor: "#e5f3ff" },
+  backgroundLayer: {
+    ...StyleSheet.absoluteFillObject,
+    overflow: "hidden",
+  },
+  circle: {
+    position: "absolute",
+    width: 240,
+    height: 240,
+    borderRadius: 120,
+  },
+  circleTop: {
+    backgroundColor: "rgba(59,130,246,0.18)",
+    top: -80,
+    right: -60,
+  },
+  circleBottomLeft: {
+    backgroundColor: "rgba(16,185,129,0.16)",
+    bottom: -100,
+    left: -70,
+  },
   flex: { flex: 1 },
   container: { flex: 1 },
   content: {
@@ -394,37 +412,42 @@ const styles = StyleSheet.create({
   header: {
     fontSize: 22,
     fontWeight: "800",
-    color: "#f9fafb",
+    color: "#0f172a",
     marginBottom: 4,
   },
   subheader: {
     fontSize: 13,
-    color: "#9ca3af",
+    color: "#64748b",
     marginBottom: 16,
   },
   card: {
-    backgroundColor: "#020617",
-    borderRadius: 20,
+    backgroundColor: "#ffffff",
+    borderRadius: 18,
     padding: 16,
     borderWidth: 1,
-    borderColor: "rgba(148,163,184,0.45)",
+    borderColor: "rgba(148,163,184,0.6)",
+    shadowColor: "#0f172a",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 10,
+    elevation: 3,
   },
   label: {
     fontSize: 13,
-    color: "#e5e7eb",
+    color: "#0f172a",
     marginTop: 8,
     marginBottom: 4,
     fontWeight: "600",
   },
   input: {
     borderWidth: 1,
-    borderColor: "#334155",
+    borderColor: "#cbd5e1",
     borderRadius: 10,
     paddingHorizontal: 10,
     paddingVertical: Platform.select({ ios: 10, android: 8 }),
-    color: "#f9fafb",
+    color: "#0f172a",
     fontSize: 14,
-    backgroundColor: "#020617",
+    backgroundColor: "#f8fafc",
   },
   textArea: {
     minHeight: 90,
@@ -438,9 +461,10 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     borderRadius: 999,
     borderWidth: 1,
-    borderColor: "#4b5563",
+    borderColor: "#cbd5e1",
     alignItems: "center",
     marginRight: 8,
+    backgroundColor: "#ffffff",
   },
   lastChip: { marginRight: 0 },
   audienceChipActive: {
@@ -449,29 +473,29 @@ const styles = StyleSheet.create({
   },
   audienceText: {
     fontSize: 13,
-    color: "#e5e7eb",
+    color: "#0f172a",
     fontWeight: "600",
   },
   audienceTextActive: {
-    color: "#fff",
+    color: "#ffffff",
   },
   hint: {
     fontSize: 11,
-    color: "#9ca3af",
+    color: "#6b7280",
     marginTop: 4,
   },
   button: {
     marginTop: 16,
-    backgroundColor: "#3b82f6",
+    backgroundColor: "#2563eb",
     paddingVertical: 12,
     borderRadius: 999,
     alignItems: "center",
   },
   buttonDisabled: {
-    backgroundColor: "#60a5fa",
+    backgroundColor: "#93c5fd",
   },
   buttonText: {
-    color: "#fff",
+    color: "#ffffff",
     fontSize: 15,
     fontWeight: "700",
   },
@@ -480,7 +504,7 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     fontSize: 16,
     fontWeight: "700",
-    color: "#f9fafb",
+    color: "#0f172a",
   },
   centerBox: {
     marginTop: 16,
@@ -488,21 +512,21 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     marginTop: 8,
-    color: "#9ca3af",
+    color: "#6b7280",
     fontSize: 13,
   },
   emptyText: {
     marginTop: 8,
-    color: "#9ca3af",
+    color: "#6b7280",
     fontSize: 13,
   },
   msgCard: {
-    backgroundColor: "#020617",
+    backgroundColor: "#ffffff",
     borderRadius: 16,
     padding: 12,
     marginTop: 8,
     borderWidth: 1,
-    borderColor: "rgba(148,163,184,0.45)",
+    borderColor: "rgba(148,163,184,0.6)",
   },
   msgHeaderRow: {
     flexDirection: "row",
@@ -511,7 +535,7 @@ const styles = StyleSheet.create({
   msgName: {
     fontSize: 14,
     fontWeight: "700",
-    color: "#e5e7eb",
+    color: "#0f172a",
   },
   roleRow: {
     flexDirection: "row",
@@ -523,8 +547,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 999,
-    backgroundColor: "rgba(34,197,94,0.2)",
-    color: "#bbf7d0",
+    backgroundColor: "rgba(34,197,94,0.12)",
+    color: "#15803d",
     marginRight: 6,
   },
   msgType: {
@@ -532,35 +556,35 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 2,
     borderRadius: 999,
-    backgroundColor: "rgba(59,130,246,0.2)",
-    color: "#bfdbfe",
+    backgroundColor: "rgba(59,130,246,0.12)",
+    color: "#1d4ed8",
   },
   msgMetaSmall: {
     marginLeft: 8,
     fontSize: 11,
-    color: "#9ca3af",
+    color: "#6b7280",
   },
   msgText: {
     marginTop: 6,
     fontSize: 13,
-    color: "#f9fafb",
+    color: "#111827",
   },
   suggestionsContainer: {
     marginTop: 4,
     borderWidth: 1,
-    borderColor: "#334155",
+    borderColor: "#cbd5e1",
     borderRadius: 10,
     overflow: "hidden",
+    backgroundColor: "#ffffff",
   },
   suggestionItem: {
     paddingVertical: 8,
     paddingHorizontal: 10,
-    backgroundColor: "#020617",
     borderBottomWidth: 1,
-    borderBottomColor: "#1f2937",
+    borderBottomColor: "#e5e7eb",
   },
   suggestionText: {
     fontSize: 13,
-    color: "#e5e7eb",
+    color: "#0f172a",
   },
 });

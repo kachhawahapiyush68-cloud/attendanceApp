@@ -12,11 +12,12 @@ function LayoutContent() {
 
   return (
     <>
-      <StatusBar style="light" />
+      {/* light app, so use dark status bar icons */}
+      <StatusBar style="dark" />
       <Stack
         screenOptions={{
-          headerStyle: { backgroundColor: "#020617" },
-          headerTintColor: "#f9fafb",
+          headerStyle: { backgroundColor: "#e5f3ff" },
+          headerTintColor: "#0f172a",
           headerTitleStyle: { fontWeight: "bold" },
         }}
       >
@@ -52,6 +53,12 @@ function LayoutContent() {
           name="admin/employee-locations"
           options={{
             title: makeTitle("Locations", "Employee Locations"),
+          }}
+        />
+        <Stack.Screen
+          name="admin/offices"
+          options={{
+            title: makeTitle("Offices", "Offices"),
           }}
         />
         <Stack.Screen
@@ -122,6 +129,5 @@ function LayoutContent() {
 }
 
 export default function RootLayout() {
-  // No extra AuthProvider needed; Zustand already wraps global state
   return <LayoutContent />;
 }

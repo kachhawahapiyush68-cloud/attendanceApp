@@ -1,6 +1,13 @@
 // app/admin/report-detail.tsx
 import React from "react";
-import { View, Text, StyleSheet, Image, ScrollView } from "react-native";
+import {
+  View,
+  Text,
+  StyleSheet,
+  Image,
+  ScrollView,
+  SafeAreaView,
+} from "react-native";
 import { useLocalSearchParams } from "expo-router";
 import { ReportItem } from "../../services/reportService";
 
@@ -13,101 +20,113 @@ export default function ReportDetailScreen() {
 
   if (!item) {
     return (
-      <View style={styles.centerRoot}>
-        <Text style={styles.centerText}>Invalid record.</Text>
-      </View>
+      <SafeAreaView style={styles.safe}>
+        <View style={styles.centerRoot}>
+          <Text style={styles.centerText}>Invalid record.</Text>
+        </View>
+      </SafeAreaView>
     );
   }
 
   return (
-    <View style={styles.root}>
-      <View style={styles.bgTop} />
-      <View style={styles.bgBottom} />
-
-      <ScrollView
-        contentContainerStyle={styles.container}
-        showsVerticalScrollIndicator={false}
-      >
-        <View style={styles.headerCard}>
-          <Text style={styles.title}>{item.name}</Text>
-          <Text style={styles.metaHighlight}>{item.user_id}</Text>
-          <Text style={styles.metaMuted}>{item.date}</Text>
+    <SafeAreaView style={styles.safe}>
+      <View style={styles.root}>
+        <View style={styles.backgroundLayer}>
+          <View style={[styles.circle, styles.circleTop]} />
+          <View style={[styles.circle, styles.circleBottomLeft]} />
         </View>
 
-        <View style={styles.infoCard}>
-          <Text style={styles.sectionTitle}>Attendance details</Text>
-
-          <View style={styles.row}>
-            <Text style={styles.label}>Status</Text>
-            <Text
-              style={[
-                styles.valueBadge,
-                item.status === "Present"
-                  ? styles.valuePresent
-                  : styles.valueOther,
-              ]}
-            >
-              {item.status}
-            </Text>
+        <ScrollView
+          contentContainerStyle={styles.container}
+          showsVerticalScrollIndicator={false}
+        >
+          <View style={styles.headerCard}>
+            <Text style={styles.title}>{item.name}</Text>
+            <Text style={styles.metaHighlight}>{item.user_id}</Text>
+            <Text style={styles.metaMuted}>{item.date}</Text>
           </View>
 
-          <View style={styles.row}>
-            <Text style={styles.label}>In</Text>
-            <Text style={styles.value}>{item.in || "-"}</Text>
+          <View style={styles.infoCard}>
+            <Text style={styles.sectionTitle}>Attendance details</Text>
+
+            <View style={styles.row}>
+              <Text style={styles.label}>Status</Text>
+              <Text
+                style={[
+                  styles.valueBadge,
+                  item.status === "Present"
+                    ? styles.valuePresent
+                    : styles.valueOther,
+                ]}
+              >
+                {item.status}
+              </Text>
+            </View>
+
+            <View style={styles.row}>
+              <Text style={styles.label}>In</Text>
+              <Text style={styles.value}>{item.in || "-"}</Text>
+            </View>
+
+            <View style={styles.row}>
+              <Text style={styles.label}>Out</Text>
+              <Text style={styles.value}>{item.out || "-"}</Text>
+            </View>
+
+            <View style={styles.row}>
+              <Text style={styles.label}>Location</Text>
+              <Text style={styles.value}>
+                {item.location || "Not tracked"}
+              </Text>
+            </View>
           </View>
 
-          <View style={styles.row}>
-            <Text style={styles.label}>Out</Text>
-            <Text style={styles.value}>{item.out || "-"}</Text>
+          <View style={styles.selfieCard}>
+            <Text style={styles.sectionTitle}>Selfie</Text>
+            {item.selfie ? (
+              <Image
+                source={{ uri: item.selfie }}
+                style={styles.selfieImage}
+                resizeMode="cover"
+              />
+            ) : (
+              <Text style={styles.noSelfieText}>No selfie available.</Text>
+            )}
           </View>
-
-          <View style={styles.row}>
-            <Text style={styles.label}>Location</Text>
-            <Text style={styles.value}>
-              {item.location || "Not tracked"}
-            </Text>
-          </View>
-        </View>
-
-        <View style={styles.selfieCard}>
-          <Text style={styles.sectionTitle}>Selfie</Text>
-          {item.selfie ? (
-            <Image
-              source={{ uri: item.selfie }}
-              style={styles.selfieImage}
-              resizeMode="cover"
-            />
-          ) : (
-            <Text style={styles.noSelfieText}>No selfie available.</Text>
-          )}
-        </View>
-      </ScrollView>
-    </View>
+        </ScrollView>
+      </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  safe: {
+    flex: 1,
+    backgroundColor: "#e5f3ff",
+  },
   root: {
     flex: 1,
-    backgroundColor: "#020617",
+    backgroundColor: "#e5f3ff",
   },
-  bgTop: {
+  backgroundLayer: {
+    ...StyleSheet.absoluteFillObject,
+    overflow: "hidden",
+  },
+  circle: {
     position: "absolute",
+    width: 220,
+    height: 220,
+    borderRadius: 110,
+  },
+  circleTop: {
+    backgroundColor: "rgba(59,130,246,0.18)",
     top: -70,
     right: -50,
-    width: 220,
-    height: 220,
-    borderRadius: 200,
-    backgroundColor: "rgba(59,130,246,0.25)",
   },
-  bgBottom: {
-    position: "absolute",
-    bottom: -80,
+  circleBottomLeft: {
+    backgroundColor: "rgba(16,185,129,0.16)",
+    bottom: -90,
     left: -60,
-    width: 220,
-    height: 220,
-    borderRadius: 200,
-    backgroundColor: "rgba(16,185,129,0.25)",
   },
   container: {
     padding: 16,
@@ -117,48 +136,57 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "#020617",
   },
   centerText: {
-    color: "#e5e7eb",
+    color: "#0f172a",
     fontSize: 14,
   },
   headerCard: {
-    backgroundColor: "rgba(15,23,42,0.98)",
+    backgroundColor: "#ffffff",
     borderRadius: 22,
     padding: 16,
     borderWidth: 1,
-    borderColor: "rgba(148,163,184,0.55)",
+    borderColor: "rgba(148,163,184,0.6)",
     marginBottom: 14,
+    shadowColor: "#0f172a",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.06,
+    shadowRadius: 10,
+    elevation: 2,
   },
   title: {
     fontSize: 20,
     fontWeight: "800",
-    color: "#f9fafb",
+    color: "#0f172a",
     marginBottom: 4,
   },
   metaHighlight: {
     fontSize: 13,
-    color: "#60a5fa",
+    color: "#2563eb",
     fontWeight: "600",
   },
   metaMuted: {
     fontSize: 12,
-    color: "#9ca3af",
+    color: "#64748b",
     marginTop: 2,
   },
   infoCard: {
-    backgroundColor: "rgba(15,23,42,0.96)",
+    backgroundColor: "#ffffff",
     borderRadius: 20,
     padding: 16,
     borderWidth: 1,
-    borderColor: "rgba(30,64,175,0.5)",
+    borderColor: "rgba(148,163,184,0.6)",
     marginBottom: 14,
+    shadowColor: "#0f172a",
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 1,
   },
   sectionTitle: {
     fontSize: 15,
     fontWeight: "700",
-    color: "#e5e7eb",
+    color: "#0f172a",
     marginBottom: 10,
   },
   row: {
@@ -168,11 +196,11 @@ const styles = StyleSheet.create({
   },
   label: {
     fontSize: 13,
-    color: "#9ca3af",
+    color: "#6b7280",
   },
   value: {
     fontSize: 13,
-    color: "#e5e7eb",
+    color: "#0f172a",
     maxWidth: "60%",
     textAlign: "right",
   },
@@ -186,19 +214,25 @@ const styles = StyleSheet.create({
     minWidth: 70,
   },
   valuePresent: {
-    backgroundColor: "rgba(22,163,74,0.2)",
-    color: "#4ade80",
+    backgroundColor: "rgba(22,163,74,0.12)",
+    color: "#15803d",
   },
   valueOther: {
-    backgroundColor: "rgba(234,179,8,0.2)",
-    color: "#facc15",
+    backgroundColor: "rgba(234,179,8,0.12)",
+    color: "#92400e",
   },
   selfieCard: {
-    backgroundColor: "rgba(15,23,42,0.96)",
+    backgroundColor: "#ffffff",
     borderRadius: 20,
     padding: 16,
     borderWidth: 1,
-    borderColor: "rgba(30,64,175,0.5)",
+    borderColor: "rgba(148,163,184,0.6)",
+    marginTop: 4,
+    shadowColor: "#0f172a",
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 1,
   },
   selfieImage: {
     width: "100%",
@@ -208,7 +242,7 @@ const styles = StyleSheet.create({
   },
   noSelfieText: {
     marginTop: 8,
-    color: "#9ca3af",
+    color: "#6b7280",
     fontSize: 13,
   },
 });

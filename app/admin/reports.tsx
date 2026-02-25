@@ -11,6 +11,7 @@ import {
   KeyboardAvoidingView,
   ScrollView,
   Alert,
+  SafeAreaView,
 } from "react-native";
 import DateTimePicker, {
   DateTimePickerEvent,
@@ -23,11 +24,9 @@ export default function ReportsScreen() {
   const router = useRouter();
   const now = new Date();
 
-  // we still use month/year for backend API
   const [month, setMonth] = useState(String(now.getMonth() + 1));
   const [year, setYear] = useState(String(now.getFullYear()));
 
-  // from/to for calendar filter (you can extend backend later to use both)
   const [fromDate, setFromDate] = useState<Date>(now);
   const [toDate, setToDate] = useState<Date>(now);
   const [pickerMode, setPickerMode] = useState<"from" | "to">("from");
@@ -96,7 +95,6 @@ export default function ReportsScreen() {
       setToDate(date);
     }
 
-    // also update month/year from "from" date (main filter for backend)
     const base = pickerMode === "from" ? date : fromDate;
     const m = base.getMonth() + 1;
     const y = base.getFullYear();
@@ -105,186 +103,194 @@ export default function ReportsScreen() {
   };
 
   return (
-    <View style={styles.root}>
-      <View style={styles.bgTop} />
-      <View style={styles.bgBottom} />
+    <SafeAreaView style={styles.safe}>
+      <View style={styles.root}>
+        <View style={styles.backgroundLayer}>
+          <View style={[styles.circle, styles.circleTop]} />
+          <View style={[styles.circle, styles.circleBottomLeft]} />
+        </View>
 
-      <KeyboardAvoidingView
-        style={styles.flex}
-        behavior={behavior}
-        keyboardVerticalOffset={Platform.OS === "ios" ? 10 : 80}
-      >
-        <ScrollView
+        <KeyboardAvoidingView
           style={styles.flex}
-          contentContainerStyle={styles.scrollContent}
-          keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}
+          behavior={behavior}
+          keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 80}
         >
-          <View style={styles.headerCard}>
-            <Text style={styles.title}>Monthly attendance</Text>
-            <Text style={styles.subtitle}>
-              Filter by date range and (optionally) a single employee.
-            </Text>
-          </View>
-
-          <View style={styles.filterCard}>
-            <Text style={styles.filterLabel}>Filters</Text>
-
-            {/* From / To date selectors */}
-            <View style={styles.dateRow}>
-              <View style={styles.dateColumn}>
-                <Text style={styles.labelSmall}>From</Text>
-                <TouchableOpacity
-                  style={styles.dateButton}
-                  onPress={() => openPicker("from")}
-                >
-                  <Text style={styles.dateButtonText}>
-                    {fromDate.toLocaleDateString()}
-                  </Text>
-                </TouchableOpacity>
-              </View>
-              <View style={styles.dateColumn}>
-                <Text style={styles.labelSmall}>To</Text>
-                <TouchableOpacity
-                  style={styles.dateButton}
-                  onPress={() => openPicker("to")}
-                >
-                  <Text style={styles.dateButtonText}>
-                    {toDate.toLocaleDateString()}
-                  </Text>
-                </TouchableOpacity>
-              </View>
+          <ScrollView
+            style={styles.flex}
+            contentContainerStyle={styles.scrollContent}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+          >
+            <View style={styles.headerCard}>
+              <Text style={styles.title}>Monthly attendance</Text>
+              <Text style={styles.subtitle}>
+                Filter by date range and (optionally) a single employee.
+              </Text>
             </View>
 
-            {/* Employee ID input (no dropdown) */}
-            <Text style={[styles.labelSmall, { marginTop: 10 }]}>
-              Employee ID
-            </Text>
-            <View style={styles.employeeRow}>
-              <TextInput
-                style={[styles.input, { flex: 1, marginRight: 0 }]}
-                placeholder="Type employee ID..."
-                placeholderTextColor="#64748b"
-                value={employeeId}
-                onChangeText={setEmployeeId}
+            <View style={styles.filterCard}>
+              <Text style={styles.filterLabel}>Filters</Text>
+
+              {/* From / To date selectors */}
+              <View style={styles.dateRow}>
+                <View style={styles.dateColumn}>
+                  <Text style={styles.labelSmall}>From</Text>
+                  <TouchableOpacity
+                    style={styles.dateButton}
+                    onPress={() => openPicker("from")}
+                  >
+                    <Text style={styles.dateButtonText}>
+                      {fromDate.toLocaleDateString()}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+                <View style={styles.dateColumn}>
+                  <Text style={styles.labelSmall}>To</Text>
+                  <TouchableOpacity
+                    style={styles.dateButton}
+                    onPress={() => openPicker("to")}
+                  >
+                    <Text style={styles.dateButtonText}>
+                      {toDate.toLocaleDateString()}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+
+              {/* Employee ID input */}
+              <Text style={[styles.labelSmall, { marginTop: 10 }]}>
+                Employee ID
+              </Text>
+              <View style={styles.employeeRow}>
+                <TextInput
+                  style={[styles.input, { flex: 1, marginRight: 0 }]}
+                  placeholder="Type employee ID..."
+                  placeholderTextColor="#64748b"
+                  value={employeeId}
+                  onChangeText={setEmployeeId}
+                />
+              </View>
+
+              {employees.length > 0 && (
+                <Text style={styles.hint}>
+                  Example IDs:{" "}
+                  {employees
+                    .slice(0, 3)
+                    .map((e) => e.user_id)
+                    .join(", ")}
+                  {employees.length > 3 ? "..." : ""} (
+                  {employees
+                    .slice(0, 3)
+                    .map((e) => e.name || "No name")
+                    .join(", ")}
+                  )
+                </Text>
+              )}
+
+              <TouchableOpacity
+                style={[styles.button, loading && styles.buttonDisabled]}
+                onPress={loadReport}
+                disabled={loading}
+              >
+                <Text style={styles.buttonText}>
+                  {loading ? "Loading..." : "Apply filters"}
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.listWrapper}>
+              <Text style={styles.sectionTitle}>Results</Text>
+
+              <FlatList
+                data={report}
+                keyExtractor={(item, idx) =>
+                  String((item as any).id ?? `${item.user_id}-${item.date}-${idx}`)
+                }
+                scrollEnabled={false}
+                contentContainerStyle={styles.listContent}
+                ListEmptyComponent={
+                  <Text style={styles.emptyText}>No records found.</Text>
+                }
+                renderItem={({ item }) => (
+                  <TouchableOpacity
+                    style={styles.card}
+                    onPress={() =>
+                      router.push({
+                        pathname: "/admin/report-detail",
+                        params: { item: JSON.stringify(item) },
+                      })
+                    }
+                  >
+                    <View style={styles.cardHeaderRow}>
+                      <Text style={styles.name}>{item.name}</Text>
+                      <Text
+                        style={[
+                          styles.status,
+                          item.status === "Present"
+                            ? styles.statusPresent
+                            : styles.statusOther,
+                        ]}
+                      >
+                        {item.status}
+                      </Text>
+                    </View>
+                    <Text style={styles.meta}>ID · {item.user_id}</Text>
+                    <Text style={styles.meta}>Date · {item.date}</Text>
+                    <Text style={styles.meta}>
+                      In · {item.in || "-"} • Out · {item.out || "-"}
+                    </Text>
+                    <Text style={styles.meta}>
+                      Location · {item.location || "Not tracked"}
+                    </Text>
+                  </TouchableOpacity>
+                )}
               />
             </View>
+          </ScrollView>
 
-            {employees.length > 0 && (
-              <Text style={styles.hint}>
-                Example IDs:{" "}
-                {employees
-                  .slice(0, 3)
-                  .map((e) => e.user_id)
-                  .join(", ")}
-                {employees.length > 3 ? "..." : ""} (
-                {employees
-                  .slice(0, 3)
-                  .map((e) => e.name || "No name")
-                  .join(", ")}
-                )
-              </Text>
-            )}
-
-            <TouchableOpacity
-              style={[styles.button, loading && styles.buttonDisabled]}
-              onPress={loadReport}
-              disabled={loading}
-            >
-              <Text style={styles.buttonText}>
-                {loading ? "Loading..." : "Apply filters"}
-              </Text>
-            </TouchableOpacity>
-          </View>
-
-          <View style={styles.listWrapper}>
-            <Text style={styles.sectionTitle}>Results</Text>
-
-            <FlatList
-              data={report}
-              keyExtractor={(item, idx) =>
-                String(
-                  (item as any).id ?? `${item.user_id}-${item.date}-${idx}`
-                )
-              }
-              scrollEnabled={false}
-              contentContainerStyle={styles.listContent}
-              ListEmptyComponent={
-                <Text style={styles.emptyText}>No records found.</Text>
-              }
-              renderItem={({ item }) => (
-                <TouchableOpacity
-                  style={styles.card}
-                  onPress={() =>
-                    router.push({
-                      pathname: "/admin/report-detail",
-                      params: { item: JSON.stringify(item) },
-                    })
-                  }
-                >
-                  <View style={styles.cardHeaderRow}>
-                    <Text style={styles.name}>{item.name}</Text>
-                    <Text
-                      style={[
-                        styles.status,
-                        item.status === "Present"
-                          ? styles.statusPresent
-                          : styles.statusOther,
-                      ]}
-                    >
-                      {item.status}
-                    </Text>
-                  </View>
-                  <Text style={styles.meta}>ID · {item.user_id}</Text>
-                  <Text style={styles.meta}>Date · {item.date}</Text>
-                  <Text style={styles.meta}>
-                    In · {item.in || "-"} • Out · {item.out || "-"}
-                  </Text>
-                  <Text style={styles.meta}>
-                    Location · {item.location || "Not tracked"}
-                  </Text>
-                </TouchableOpacity>
-              )}
+          {showPicker && (
+            <DateTimePicker
+              value={pickerMode === "from" ? fromDate : toDate}
+              mode="date"
+              display={Platform.OS === "ios" ? "spinner" : "default"}
+              onChange={onChangeDate}
             />
-          </View>
-        </ScrollView>
-
-        {showPicker && (
-          <DateTimePicker
-            value={pickerMode === "from" ? fromDate : toDate}
-            mode="date"
-            display={Platform.OS === "ios" ? "spinner" : "default"}
-            onChange={onChangeDate}
-          />
-        )}
-      </KeyboardAvoidingView>
-    </View>
+          )}
+        </KeyboardAvoidingView>
+      </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  safe: {
+    flex: 1,
+    backgroundColor: "#e5f3ff",
+  },
   root: {
     flex: 1,
-    backgroundColor: "#020617",
+    backgroundColor: "#e5f3ff",
   },
   flex: { flex: 1 },
-  bgTop: {
+  backgroundLayer: {
+    ...StyleSheet.absoluteFillObject,
+    overflow: "hidden",
+  },
+  circle: {
     position: "absolute",
+    width: 220,
+    height: 220,
+    borderRadius: 110,
+  },
+  circleTop: {
+    backgroundColor: "rgba(59,130,246,0.18)",
     top: -70,
     right: -50,
-    width: 220,
-    height: 220,
-    borderRadius: 200,
-    backgroundColor: "rgba(59,130,246,0.25)",
   },
-  bgBottom: {
-    position: "absolute",
-    bottom: -80,
+  circleBottomLeft: {
+    backgroundColor: "rgba(16,185,129,0.16)",
+    bottom: -90,
     left: -60,
-    width: 220,
-    height: 220,
-    borderRadius: 200,
-    backgroundColor: "rgba(16,185,129,0.25)",
   },
   scrollContent: {
     paddingHorizontal: 16,
@@ -292,40 +298,50 @@ const styles = StyleSheet.create({
     paddingBottom: 24,
   },
   headerCard: {
-    backgroundColor: "rgba(15,23,42,0.98)",
+    backgroundColor: "#ffffff",
     borderRadius: 20,
     padding: 16,
     borderWidth: 1,
-    borderColor: "rgba(148,163,184,0.55)",
+    borderColor: "rgba(148,163,184,0.6)",
     marginBottom: 12,
+    shadowColor: "#0f172a",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.06,
+    shadowRadius: 10,
+    elevation: 2,
   },
   title: {
     fontSize: 18,
     fontWeight: "800",
-    color: "#f9fafb",
+    color: "#0f172a",
     marginBottom: 4,
   },
   subtitle: {
     fontSize: 13,
-    color: "#9ca3af",
+    color: "#64748b",
   },
   filterCard: {
-    backgroundColor: "rgba(15,23,42,0.96)",
+    backgroundColor: "#ffffff",
     borderRadius: 20,
     padding: 14,
     borderWidth: 1,
-    borderColor: "rgba(30,64,175,0.5)",
+    borderColor: "rgba(148,163,184,0.6)",
     marginBottom: 14,
+    shadowColor: "#0f172a",
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 1,
   },
   filterLabel: {
     fontSize: 14,
     fontWeight: "700",
-    color: "#e5e7eb",
+    color: "#0f172a",
     marginBottom: 6,
   },
   labelSmall: {
     fontSize: 12,
-    color: "#9ca3af",
+    color: "#6b7280",
     marginBottom: 4,
   },
   dateRow: {
@@ -338,14 +354,14 @@ const styles = StyleSheet.create({
   },
   dateButton: {
     borderWidth: 1,
-    borderColor: "#1f2937",
+    borderColor: "#cbd5e1",
     borderRadius: 10,
     paddingHorizontal: 10,
     paddingVertical: 10,
-    backgroundColor: "#020617",
+    backgroundColor: "#f8fafc",
   },
   dateButtonText: {
-    color: "#e5e7eb",
+    color: "#0f172a",
     fontSize: 13,
   },
   employeeRow: {
@@ -355,18 +371,18 @@ const styles = StyleSheet.create({
   },
   input: {
     borderWidth: 1,
-    borderColor: "#1f2937",
+    borderColor: "#cbd5e1",
     borderRadius: 10,
     paddingHorizontal: 10,
     paddingVertical: Platform.select({ ios: 10, android: 7 }),
-    backgroundColor: "#020617",
-    color: "#e5e7eb",
+    backgroundColor: "#f8fafc",
+    color: "#0f172a",
     fontSize: 13,
     marginRight: 8,
   },
   hint: {
     fontSize: 11,
-    color: "#9ca3af",
+    color: "#6b7280",
     marginTop: 6,
   },
   button: {
@@ -385,16 +401,21 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
   listWrapper: {
-    backgroundColor: "rgba(15,23,42,0.96)",
+    backgroundColor: "#ffffff",
     borderRadius: 20,
     padding: 12,
     borderWidth: 1,
-    borderColor: "rgba(30,64,175,0.5)",
+    borderColor: "rgba(148,163,184,0.6)",
+    shadowColor: "#0f172a",
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 1,
   },
   sectionTitle: {
     fontSize: 14,
     fontWeight: "700",
-    color: "#e5e7eb",
+    color: "#0f172a",
     marginBottom: 6,
   },
   listContent: {
@@ -404,16 +425,16 @@ const styles = StyleSheet.create({
   emptyText: {
     textAlign: "center",
     marginTop: 14,
-    color: "#9ca3af",
+    color: "#6b7280",
     fontSize: 13,
   },
   card: {
-    backgroundColor: "#020617",
+    backgroundColor: "#f8fafc",
     borderRadius: 14,
     padding: 10,
     marginBottom: 8,
     borderWidth: 1,
-    borderColor: "rgba(31,41,55,0.9)",
+    borderColor: "#e5e7eb",
   },
   cardHeaderRow: {
     flexDirection: "row",
@@ -423,7 +444,7 @@ const styles = StyleSheet.create({
   name: {
     fontSize: 14,
     fontWeight: "700",
-    color: "#f9fafb",
+    color: "#0f172a",
   },
   status: {
     fontSize: 11,
@@ -434,17 +455,16 @@ const styles = StyleSheet.create({
     overflow: "hidden",
   },
   statusPresent: {
-    backgroundColor: "rgba(22,163,74,0.2)",
-    color: "#4ade80",
+    backgroundColor: "rgba(22,163,74,0.12)",
+    color: "#15803d",
   },
   statusOther: {
-    backgroundColor: "rgba(234,179,8,0.2)",
-    color: "#facc15",
+    backgroundColor: "rgba(234,179,8,0.12)",
+    color: "#92400e",
   },
   meta: {
     fontSize: 12,
-    color: "#9ca3af",
+    color: "#6b7280",
     marginTop: 1,
   },
 });
-

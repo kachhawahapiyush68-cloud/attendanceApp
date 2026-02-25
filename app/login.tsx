@@ -1,4 +1,4 @@
-// app/login.tsx (simplified, mobile-focused)
+// app/login.tsx
 import React, { useState } from "react";
 import {
   View,
@@ -7,10 +7,12 @@ import {
   TouchableOpacity,
   StyleSheet,
   Alert,
-  KeyboardAvoidingView,
   Platform,
   Image,
   ScrollView,
+  Keyboard,
+  TouchableWithoutFeedback,
+  SafeAreaView,
 } from "react-native";
 import { useRouter } from "expo-router";
 import { login } from "../services/authService";
@@ -48,78 +50,98 @@ export default function LoginScreen() {
   };
 
   return (
-    <KeyboardAvoidingView
-      style={styles.root}
-      behavior={Platform.select({ ios: "padding", android: undefined })}
-    >
-      {/* scroll to handle very small phones + keyboard */}
-      <ScrollView
-        contentContainerStyle={styles.scrollContent}
-        keyboardShouldPersistTaps="handled"
-        bounces={false}
-      >
-        {/* SIMPLE background shapes, not tied to exact width/height */}
-        <View style={styles.backgroundLayer}>
-          <View style={[styles.balloon, styles.balloonTop]} />
-          <View style={[styles.balloon, styles.balloonBottomLeft]} />
-          <View style={[styles.balloon, styles.balloonMiddleRight]} />
-        </View>
-
-        <View style={styles.container}>
-          <View style={styles.header}>
-            <Image
-              source={require("../assets/images/logooffice.jpeg")}
-              style={styles.logo}
-              resizeMode="contain"
-            />
-            <Text style={styles.appName}>Attendance App</Text>
-            <Text style={styles.appTagline}>Secure time & location tracking</Text>
+    <SafeAreaView style={styles.safe}>
+      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+        <View style={styles.root}>
+          {/* decorative background */}
+          <View style={styles.backgroundLayer}>
+            {/* big soft circles */}
+            <View style={[styles.circle, styles.circleTop]} />
+            <View style={[styles.circle, styles.circleBottomLeft]} />
+            <View style={[styles.circle, styles.circleBottomRight]} />
+            <View style={[styles.circle, styles.circleMiddleLeft]} />
+            {/* little star dots */}
+            <View style={[styles.star, { top: 50, left: 40 }]} />
+            <View style={[styles.star, { top: 90, right: 60 }]} />
+            <View style={[styles.star, { top: 180, left: 120 }]} />
+            <View style={[styles.star, { top: 240, right: 40 }]} />
+            <View style={[styles.star, { bottom: 140, left: 60 }]} />
+            <View style={[styles.star, { bottom: 90, right: 100 }]} />
           </View>
 
-          <View style={styles.card}>
-            <Text style={styles.title}>Login</Text>
-            <Text style={styles.subtitle}>
-              Use your User ID and PIN to sign in
-            </Text>
+          <ScrollView
+            style={{ flex: 1 }}
+            contentContainerStyle={styles.scrollContent}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+          >
+            <View style={styles.container}>
+              <View style={styles.header}>
+                <Image
+                  source={require("../assets/logos/logo1.png")}
+                  style={styles.logo}
+                  resizeMode="contain"
+                />
+                <Text style={styles.appName}>Attendance App</Text>
+                <Text style={styles.appTagline}>
+                  Secure time & location tracking
+                </Text>
+              </View>
 
-            <TextInput
-              placeholder="User ID"
-              value={userId}
-              onChangeText={setUserId}
-              style={styles.input}
-              autoCapitalize="none"
-              placeholderTextColor="#9ca3af"
-            />
-            <TextInput
-              placeholder="PIN"
-              value={pin}
-              onChangeText={setPin}
-              secureTextEntry
-              keyboardType="numeric"
-              style={styles.input}
-              placeholderTextColor="#9ca3af"
-            />
+              <View style={styles.card}>
+                <Text style={styles.title}>Login</Text>
+                <Text style={styles.subtitle}>
+                  Use your User ID and PIN to sign in
+                </Text>
 
-            <TouchableOpacity
-              style={[styles.button, loading && styles.buttonDisabled]}
-              onPress={handleSubmit}
-              disabled={loading}
-            >
-              <Text style={styles.buttonText}>
-                {loading ? "Please wait..." : "Login"}
-              </Text>
-            </TouchableOpacity>
-          </View>
+                <TextInput
+                  placeholder="User ID"
+                  value={userId}
+                  onChangeText={setUserId}
+                  style={styles.input}
+                  autoCapitalize="none"
+                  placeholderTextColor="#9ca3af"
+                  returnKeyType="next"
+                />
+
+                <TextInput
+                  placeholder="PIN"
+                  value={pin}
+                  onChangeText={setPin}
+                  secureTextEntry
+                  keyboardType="numeric"
+                  style={styles.input}
+                  placeholderTextColor="#9ca3af"
+                  returnKeyType="done"
+                  onSubmitEditing={handleSubmit}
+                />
+
+                <TouchableOpacity
+                  style={[styles.button, loading && styles.buttonDisabled]}
+                  onPress={handleSubmit}
+                  disabled={loading}
+                >
+                  <Text style={styles.buttonText}>
+                    {loading ? "Please wait..." : "Login"}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </ScrollView>
         </View>
-      </ScrollView>
-    </KeyboardAvoidingView>
+      </TouchableWithoutFeedback>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  safe: {
+    flex: 1,
+    backgroundColor: "#e5f3ff", // light, clean background
+  },
   root: {
     flex: 1,
-    backgroundColor: "#0f172a",
+    backgroundColor: "#e5f3ff",
   },
   scrollContent: {
     flexGrow: 1,
@@ -128,85 +150,103 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
     overflow: "hidden",
   },
-  balloon: {
+  circle: {
     position: "absolute",
-    backgroundColor: "rgba(59,130,246,0.25)",
-    width: 300,      // fixed but off-screen, only for decoration
-    height: 300,
-    borderRadius: 150,
+    width: 260,
+    height: 260,
+    borderRadius: 130,
   },
-  balloonTop: {
+  circleTop: {
+    backgroundColor: "rgba(59,130,246,0.18)",
     top: -120,
-    right: -120,
+    right: -80,
   },
-  balloonBottomLeft: {
-    backgroundColor: "rgba(16,185,129,0.22)",
-    bottom: -140,
-    left: -120,
+  circleBottomLeft: {
+    backgroundColor: "rgba(22,163,74,0.14)",
+    bottom: -120,
+    left: -80,
   },
-  balloonMiddleRight: {
-    backgroundColor: "rgba(168,85,247,0.18)",
-    top: "40%",      // percentage for relative positioning
-    right: -100,
+  circleBottomRight: {
+    backgroundColor: "rgba(249,115,22,0.12)",
+    bottom: -40,
+    right: -40,
+  },
+  circleMiddleLeft: {
+    backgroundColor: "rgba(56,189,248,0.16)",
+    top: "45%",
+    left: -110,
+  },
+  star: {
+    position: "absolute",
+    width: 5,
+    height: 5,
+    borderRadius: 2.5,
+    backgroundColor: "rgba(148,163,184,0.8)",
   },
   container: {
-    flex: 1,
+    flexGrow: 1,
     paddingHorizontal: 20,
-    justifyContent: "center",
-    paddingVertical: 32,
+    paddingTop: 100,
+    paddingBottom: 20,
+    justifyContent: "flex-start",
   },
   header: {
     alignItems: "center",
-    marginBottom: 24,
+    marginBottom: 18,
   },
   logo: {
-    width: 100,
-    height: 100,
-    marginBottom: 8,
+    width: 90,
+    height: 90,
+    marginBottom: 6,
   },
   appName: {
     fontSize: 24,
     fontWeight: "800",
-    color: "#e5e7eb",
+    color: "#0f172a",
   },
   appTagline: {
     marginTop: 4,
     fontSize: 13,
-    color: "#9ca3af",
+    color: "#64748b",
     textAlign: "center",
   },
   card: {
-    width: "100%",          // responsive width
-    maxWidth: 420,          // looks good on larger phones / tablets
+    width: "100%",
+    maxWidth: 420,
     alignSelf: "center",
-    backgroundColor: "rgba(15,23,42,0.95)",
-    borderRadius: 16,
+    backgroundColor: "#ffffff",
+    borderRadius: 18,
     padding: 20,
     borderWidth: 1,
     borderColor: "rgba(148,163,184,0.6)",
+    shadowColor: "#0f172a",
+    shadowOpacity: 0.12,
+    shadowOffset: { width: 0, height: 8 },
+    shadowRadius: 16,
+    elevation: 4,
   },
   title: {
     fontSize: 20,
     fontWeight: "700",
     textAlign: "center",
     marginBottom: 4,
-    color: "#f9fafb",
+    color: "#0f172a",
   },
   subtitle: {
     fontSize: 13,
     textAlign: "center",
     marginBottom: 16,
-    color: "#9ca3af",
+    color: "#6b7280",
   },
   input: {
     borderWidth: 1,
-    borderColor: "#334155",
+    borderColor: "#cbd5e1",
     borderRadius: 10,
     paddingHorizontal: 12,
-    paddingVertical: Platform.select({ ios: 12, android: 8 }),
+    paddingVertical: Platform.select({ android: 8 }),
     marginBottom: 10,
-    color: "#f9fafb",
-    backgroundColor: "#020617",
+    color: "#0f172a",
+    backgroundColor: "#f8fafc",
     fontSize: 14,
   },
   button: {
@@ -214,13 +254,13 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     paddingVertical: 12,
     alignItems: "center",
-    marginTop: 8,
+    marginTop: 12,
   },
   buttonDisabled: {
-    backgroundColor: "#60a5fa",
+    backgroundColor: "#93c5fd",
   },
   buttonText: {
-    color: "#fff",
+    color: "#ffffff",
     fontWeight: "700",
     fontSize: 15,
   },

@@ -1,3 +1,4 @@
+// app/employee/notifications.tsx
 import React, { useEffect, useState, useCallback } from "react";
 import {
   View,
@@ -10,6 +11,8 @@ import {
   FlatList,
   Alert,
   TouchableWithoutFeedback,
+  SafeAreaView,
+  Keyboard,
 } from "react-native";
 import {
   sendEmployeeNotification,
@@ -151,78 +154,97 @@ export default function EmployeeNotificationsScreen() {
   };
 
   return (
-    <View style={styles.root}>
-      <View style={styles.bgTop} />
-      <View style={styles.bgBottom} />
-
-      <KeyboardAvoidingView
-        style={styles.flex}
-        behavior={behavior}
-        keyboardVerticalOffset={Platform.OS === "ios" ? 10 : 60}
-      >
-        <View style={styles.flex}>
-          <FlatList
-            data={notifications}
-            keyExtractor={(item) => String(item.id)}
-            contentContainerStyle={styles.listContent}
-            ListEmptyComponent={
-              <Text style={styles.emptyText}>
-                {loading
-                  ? "Loading..."
-                  : "No messages yet. Start a chat with admin."}
-              </Text>
-            }
-            renderItem={renderItem}
-          />
-
-          <View style={styles.composerContainer}>
-            <TextInput
-              style={styles.input}
-              placeholder={
-                editingId ? "Edit your message..." : "Type a message..."
-              }
-              placeholderTextColor="#64748b"
-              value={message}
-              onChangeText={setMessage}
-              multiline
-            />
-            <TouchableOpacity
-              style={[styles.sendButton, sending && { opacity: 0.6 }]}
-              onPress={handleSendOrEdit}
-              disabled={sending || !message.trim()}
-              activeOpacity={0.8}
-            >
-              <Text style={styles.sendText}>
-                {editingId ? "Update" : "Send"}
-              </Text>
-            </TouchableOpacity>
+    <SafeAreaView style={styles.safe}>
+      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+        <View style={styles.root}>
+          {/* light background shapes */}
+          <View style={styles.backgroundLayer}>
+            <View style={[styles.circle, styles.circleTop]} />
+            <View style={[styles.circle, styles.circleBottomLeft]} />
           </View>
+
+          <KeyboardAvoidingView
+            style={styles.flex}
+            behavior={behavior}
+            keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 60}
+          >
+            <View style={styles.flex}>
+              <FlatList
+                data={notifications}
+                keyExtractor={(item) => String(item.id)}
+                contentContainerStyle={styles.listContent}
+                ListEmptyComponent={
+                  <Text style={styles.emptyText}>
+                    {loading
+                      ? "Loading..."
+                      : "No messages yet. Start a chat with admin."}
+                  </Text>
+                }
+                renderItem={renderItem}
+              />
+
+              {/* composer lifted above gesture bar */}
+              <View style={styles.composerWrapper}>
+                <View style={styles.composerContainer}>
+                  <TextInput
+                    style={styles.input}
+                    placeholder={
+                      editingId ? "Edit your message..." : "Type a message..."
+                    }
+                    placeholderTextColor="#94a3b8"
+                    value={message}
+                    onChangeText={setMessage}
+                    multiline
+                  />
+                  <TouchableOpacity
+                    style={[
+                      styles.sendButton,
+                      (sending || !message.trim()) && { opacity: 0.5 },
+                    ]}
+                    onPress={handleSendOrEdit}
+                    disabled={sending || !message.trim()}
+                    activeOpacity={0.85}
+                  >
+                    <Text style={styles.sendText}>
+                      {editingId ? "Update" : "Send"}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </View>
+          </KeyboardAvoidingView>
         </View>
-      </KeyboardAvoidingView>
-    </View>
+      </TouchableWithoutFeedback>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: "#020617" },
-  flex: { flex: 1 },
-  bgTop: {
-    position: "absolute",
-    top: -80,
-    right: -60,
-    width: 260,
-    height: 260,
-    borderRadius: 200,
-    backgroundColor: "rgba(59,130,246,0.25)",
+  safe: {
+    flex: 1,
+    backgroundColor: "#e5f3ff",
   },
-  bgBottom: {
+  root: { flex: 1, backgroundColor: "#e5f3ff" },
+  flex: { flex: 1 },
+  backgroundLayer: {
+    ...StyleSheet.absoluteFillObject,
+    overflow: "hidden",
+  },
+  circle: {
     position: "absolute",
-    bottom: -90,
-    left: -70,
-    width: 260,
-    height: 260,
-    borderRadius: 200,
-    backgroundColor: "rgba(16,185,129,0.25)",
+    width: 240,
+    height: 240,
+    borderRadius: 120,
+  },
+  circleTop: {
+    backgroundColor: "rgba(59,130,246,0.18)",
+    top: -90,
+    right: -70,
+  },
+  circleBottomLeft: {
+    backgroundColor: "rgba(16,185,129,0.16)",
+    bottom: -110,
+    left: -80,
   },
   listContent: {
     paddingHorizontal: 12,
@@ -232,7 +254,7 @@ const styles = StyleSheet.create({
   emptyText: {
     textAlign: "center",
     marginTop: 40,
-    color: "#9ca3af",
+    color: "#6b7280",
     fontSize: 13,
   },
   messageRow: {
@@ -260,14 +282,14 @@ const styles = StyleSheet.create({
     borderRadius: 16,
   },
   meBubble: {
-    backgroundColor: "#3b82f6",
+    backgroundColor: "#2563eb",
     borderBottomRightRadius: 4,
   },
   adminBubble: {
-    backgroundColor: "#111827",
+    backgroundColor: "#ffffff",
     borderBottomLeftRadius: 4,
     borderWidth: 1,
-    borderColor: "#1f2937",
+    borderColor: "#cbd5e1",
   },
   adminLabel: {
     fontSize: 10,
@@ -276,44 +298,47 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
   bubbleText: {
-    color: "#f9fafb",
-    fontSize: 13,
+    color: "#0f172a",
+    fontSize: 15,
   },
   timeInside: {
     fontSize: 10,
-    color: "#9ca3af",
+    color: "#6b7280",
     alignSelf: "flex-end",
     marginTop: 2,
   },
   editedText: {
     fontSize: 10,
-    color: "#9ca3af",
+    color: "#6b7280",
     alignSelf: "flex-end",
+  },
+  composerWrapper: {
+    marginBottom: 20,
   },
   composerContainer: {
     flexDirection: "row",
     alignItems: "flex-end",
     paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderTopWidth: 1,
-    borderTopColor: "#1f2937",
-    backgroundColor: "#020617",
+    paddingVertical: 15,
+    borderTopWidth: 11,
+    borderTopColor: "#cbd5e1",
+    backgroundColor: "#e5f3ff",
   },
   input: {
     flex: 1,
     maxHeight: 90,
     borderWidth: 1,
-    borderColor: "#1f2937",
+    borderColor: "#cbd5e1",
     borderRadius: 20,
     paddingHorizontal: 12,
     paddingVertical: 8,
-    color: "#e5e7eb",
+    color: "#0f172a",
     fontSize: 13,
-    backgroundColor: "#020617",
+    backgroundColor: "#f8fafc",
   },
   sendButton: {
     marginLeft: 8,
-    backgroundColor: "#3b82f6",
+    backgroundColor: "#2563eb",
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 20,

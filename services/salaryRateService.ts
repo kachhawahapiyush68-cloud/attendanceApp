@@ -1,11 +1,15 @@
 // services/salaryRateService.ts
 import api from "./api";
 
+export type SalaryType = "hourly" | "fixed";
+
 export interface SalaryRateItem {
   user_id: string;
   name: string;
+  salaryType: SalaryType;
   hourlyRate: number;
   overtimeHourlyRate: number;
+  fixedMonthlySalary: number;
 }
 
 interface SalaryRateResponse {
@@ -23,6 +27,10 @@ export async function fetchSalaryRates(): Promise<SalaryRateItem[]> {
   return res.data.items.map((item: any): SalaryRateItem => ({
     user_id: item.user_id || "",
     name: item.name || "Unknown",
+    salaryType:
+      item.salaryType === "fixed" || item.salary_type === "fixed"
+        ? "fixed"
+        : "hourly",
     hourlyRate:
       typeof item.hourlyRate === "number"
         ? item.hourlyRate
@@ -31,12 +39,23 @@ export async function fetchSalaryRates(): Promise<SalaryRateItem[]> {
       typeof item.overtimeHourlyRate === "number"
         ? item.overtimeHourlyRate
         : Number(item.overtimeHourlyRate || 0),
+    fixedMonthlySalary:
+      typeof item.fixedMonthlySalary === "number"
+        ? item.fixedMonthlySalary
+        : typeof item.fixed_monthly_salary === "number"
+        ? item.fixed_monthly_salary
+        : Number(item.fixed_monthly_salary || 0),
   }));
 }
 
 export async function updateSalaryRate(
   user_id: string,
-  payload: { hourlyRate?: number; overtimeHourlyRate?: number }
+  payload: {
+    salary_type: SalaryType;
+    hourlyRate?: number;
+    overtimeHourlyRate?: number;
+    fixed_monthly_salary?: number;
+  }
 ): Promise<void> {
   await api.patch(`/salary/rates/${encodeURIComponent(user_id)}`, payload);
 }

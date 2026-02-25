@@ -10,6 +10,7 @@ import {
   Alert,
   TouchableOpacity,
   TextInput,
+  SafeAreaView,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import api from "../../services/api";
@@ -42,7 +43,6 @@ export default function EmployeesScreen() {
         ? res.data
         : [];
 
-      // Map backend fields to UI shape
       const list: EmployeeRow[] = raw.map((item: any) => ({
         id: item.id,
         user_id: item.user_id ?? item.userId ?? "",
@@ -101,146 +101,157 @@ export default function EmployeesScreen() {
   });
 
   return (
-    <View style={styles.root}>
-      <View style={styles.bgTop} />
-      <View style={styles.bgBottom} />
+    <SafeAreaView style={styles.safe}>
+      <View style={styles.root}>
+        {/* soft background */}
+        <View style={styles.backgroundLayer}>
+          <View style={[styles.circle, styles.circleTop]} />
+          <View style={[styles.circle, styles.circleBottomLeft]} />
+        </View>
 
-      <View style={styles.headerContainer}>
-        <Text style={styles.header}>Employees</Text>
-        <Text style={styles.subheader}>
-          Total: {employees.length} · Manage access and locations
-        </Text>
+        <View style={styles.headerContainer}>
+          <Text style={styles.header}>Employees</Text>
+          <Text style={styles.subheader}>
+            Total: {employees.length} · Manage access and locations
+          </Text>
 
-        <TextInput
-          style={styles.searchInput}
-          placeholder="Search by name, ID, email, mobile..."
-          placeholderTextColor="#6b7280"
-          value={search}
-          onChangeText={setSearch}
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Search by name, ID, email, mobile..."
+            placeholderTextColor="#6b7280"
+            value={search}
+            onChangeText={setSearch}
+          />
+        </View>
+
+        <FlatList
+          data={filteredEmployees}
+          keyExtractor={(item) => String(item.id)}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={load} />
+          }
+          contentContainerStyle={styles.listContent}
+          renderItem={({ item }) => (
+            <View style={styles.card}>
+              <View style={styles.avatar}>
+                <Text style={styles.avatarText}>
+                  {(item.name || item.user_id || "?")
+                    .trim()
+                    .charAt(0)
+                    .toUpperCase()}
+                </Text>
+              </View>
+              <View style={styles.cardMain}>
+                <Text style={styles.name}>{item.name || "No name"}</Text>
+                <Text style={styles.meta}>ID · {item.user_id}</Text>
+                <Text style={styles.meta}>Email · {item.email || "-"}</Text>
+                <Text style={styles.meta}>
+                  Mobile · {item.mobileno || "-"}
+                </Text>
+                <Text style={styles.meta}>Role · {item.role || "-"}</Text>
+
+                <TouchableOpacity
+                  style={styles.locationBtn}
+                  onPress={() =>
+                    router.push({
+                      pathname: "/admin/employee-locations",
+                      params: {
+                        userId: String(item.id),
+                        name: item.name || item.user_id,
+                      },
+                    })
+                  }
+                >
+                  <Ionicons
+                    name="location-sharp"
+                    size={14}
+                    color="#0f172a"
+                    style={{ marginRight: 4 }}
+                  />
+                  <Text style={styles.locationBtnText}>Manage locations</Text>
+                </TouchableOpacity>
+              </View>
+
+              <View style={styles.statusBlock}>
+                <Text
+                  style={[
+                    styles.statusText,
+                    item.status ? styles.statusActive : styles.statusInactive,
+                  ]}
+                >
+                  {item.status ? "Active" : "Inactive"}
+                </Text>
+                <Switch
+                  value={!!item.status}
+                  onValueChange={() => toggleStatus(item)}
+                />
+              </View>
+            </View>
+          )}
+          ListEmptyComponent={
+            <Text style={styles.emptyText}>No employees found.</Text>
+          }
         />
       </View>
-
-      <FlatList
-        data={filteredEmployees}
-        keyExtractor={(item) => String(item.id)}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={load} />
-        }
-        contentContainerStyle={styles.listContent}
-        renderItem={({ item }) => (
-          <View style={styles.card}>
-            <View style={styles.avatar}>
-              <Text style={styles.avatarText}>
-                {(item.name || item.user_id || "?")
-                  .trim()
-                  .charAt(0)
-                  .toUpperCase()}
-              </Text>
-            </View>
-            <View style={styles.cardMain}>
-              <Text style={styles.name}>{item.name || "No name"}</Text>
-              <Text style={styles.meta}>ID · {item.user_id}</Text>
-              <Text style={styles.meta}>Email · {item.email || "-"}</Text>
-              <Text style={styles.meta}>
-                Mobile · {item.mobileno || "-"}
-              </Text>
-              <Text style={styles.meta}>Role · {item.role || "-"}</Text>
-
-              <TouchableOpacity
-                style={styles.locationBtn}
-                onPress={() =>
-                  router.push({
-                    pathname: "/admin/employee-locations",
-                    params: {
-                      userId: String(item.id),
-                      name: item.name || item.user_id,
-                    },
-                  })
-                }
-              >
-                <Ionicons
-                  name="location-sharp"
-                  size={14}
-                  color="#0f172a"
-                  style={{ marginRight: 4 }}
-                />
-                <Text style={styles.locationBtnText}>Manage locations</Text>
-              </TouchableOpacity>
-            </View>
-
-            <View style={styles.statusBlock}>
-              <Text
-                style={[
-                  styles.statusText,
-                  item.status ? styles.statusActive : styles.statusInactive,
-                ]}
-              >
-                {item.status ? "Active" : "Inactive"}
-              </Text>
-              <Switch
-                value={!!item.status}
-                onValueChange={() => toggleStatus(item)}
-              />
-            </View>
-          </View>
-        )}
-        ListEmptyComponent={
-          <Text style={styles.emptyText}>No employees found.</Text>
-        }
-      />
-    </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  safe: {
+    flex: 1,
+    backgroundColor: "#e5f3ff",
+  },
   root: {
     flex: 1,
-    backgroundColor: "#020617",
+    backgroundColor: "#e5f3ff",
   },
-  bgTop: {
+  backgroundLayer: {
+    ...StyleSheet.absoluteFillObject,
+    overflow: "hidden",
+  },
+  circle: {
     position: "absolute",
-    top: -60,
-    right: -40,
     width: 220,
     height: 220,
-    borderRadius: 200,
-    backgroundColor: "rgba(59,130,246,0.25)",
+    borderRadius: 110,
   },
-  bgBottom: {
-    position: "absolute",
-    bottom: -80,
+  circleTop: {
+    backgroundColor: "rgba(59,130,246,0.18)",
+    top: -70,
+    right: -50,
+  },
+  circleBottomLeft: {
+    backgroundColor: "rgba(16,185,129,0.16)",
+    bottom: -90,
     left: -60,
-    width: 220,
-    height: 220,
-    borderRadius: 200,
-    backgroundColor: "rgba(16,185,129,0.2)",
   },
   headerContainer: {
-    paddingTop: 24,
+    paddingTop: 20,
     paddingHorizontal: 16,
     paddingBottom: 4,
   },
   header: {
     fontSize: 20,
     fontWeight: "800",
-    color: "#f9fafb",
+    color: "#0f172a",
     marginBottom: 2,
   },
   subheader: {
     fontSize: 13,
-    color: "#9ca3af",
+    color: "#64748b",
     marginBottom: 8,
   },
   searchInput: {
     marginTop: 4,
     marginBottom: 4,
     borderWidth: 1,
-    borderColor: "#1f2937",
+    borderColor: "#cbd5e1",
     borderRadius: 999,
     paddingHorizontal: 12,
     paddingVertical: 8,
-    color: "#e5e7eb",
-    backgroundColor: "#020617",
+    color: "#0f172a",
+    backgroundColor: "#f8fafc",
     fontSize: 13,
   },
   listContent: {
@@ -250,24 +261,29 @@ const styles = StyleSheet.create({
   },
   card: {
     flexDirection: "row",
-    backgroundColor: "rgba(15,23,42,0.96)",
+    backgroundColor: "#ffffff",
     borderRadius: 18,
     padding: 12,
     marginBottom: 10,
     borderWidth: 1,
-    borderColor: "rgba(30,64,175,0.4)",
+    borderColor: "rgba(148,163,184,0.6)",
+    shadowColor: "#0f172a",
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 2,
   },
   avatar: {
     width: 40,
     height: 40,
     borderRadius: 999,
-    backgroundColor: "rgba(59,130,246,0.2)",
+    backgroundColor: "#dbeafe",
     alignItems: "center",
     justifyContent: "center",
     marginRight: 10,
   },
   avatarText: {
-    color: "#e5e7eb",
+    color: "#1d4ed8",
     fontWeight: "800",
     fontSize: 16,
   },
@@ -277,12 +293,12 @@ const styles = StyleSheet.create({
   name: {
     fontSize: 15,
     fontWeight: "700",
-    color: "#f9fafb",
+    color: "#0f172a",
     marginBottom: 2,
   },
   meta: {
     fontSize: 12,
-    color: "#9ca3af",
+    color: "#6b7280",
     marginTop: 1,
   },
   statusBlock: {
@@ -300,12 +316,12 @@ const styles = StyleSheet.create({
     marginBottom: 6,
   },
   statusActive: {
-    backgroundColor: "rgba(16,185,129,0.16)",
-    color: "#4ade80",
+    backgroundColor: "rgba(34,197,94,0.12)",
+    color: "#15803d",
   },
   statusInactive: {
-    backgroundColor: "rgba(239,68,68,0.16)",
-    color: "#fca5a5",
+    backgroundColor: "rgba(239,68,68,0.12)",
+    color: "#b91c1c",
   },
   locationBtn: {
     marginTop: 6,
@@ -325,7 +341,7 @@ const styles = StyleSheet.create({
   emptyText: {
     textAlign: "center",
     marginTop: 24,
-    color: "#9ca3af",
+    color: "#6b7280",
     fontSize: 13,
   },
 });

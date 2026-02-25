@@ -1,5 +1,6 @@
 // services/salaryService.ts
 import api from "./api";
+import type { SalaryType } from "./salaryRateService";
 
 export interface SalaryItem {
   user_id: string;
@@ -11,6 +12,7 @@ export interface SalaryItem {
   basePay: number;
   overtimePay: number;
   totalPay: number;
+  salaryType?: SalaryType;
 }
 
 interface SalaryResponse {
@@ -68,5 +70,10 @@ export async function fetchSalarySummary(
       typeof item.totalPay === "number"
         ? item.totalPay
         : Number(item.totalPay || 0),
+    // from backend: salaryType or salary_type
+    salaryType:
+      item.salaryType === "fixed" || item.salary_type === "fixed"
+        ? "fixed"
+        : "hourly",
   }));
 }

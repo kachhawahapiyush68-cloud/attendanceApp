@@ -12,8 +12,8 @@ import {
   Animated,
   Dimensions,
   ScrollView,
-  Platform,
   TextInput,
+  SafeAreaView,
 } from "react-native";
 import * as ImagePicker from "expo-image-picker";
 import * as Location from "expo-location";
@@ -217,89 +217,113 @@ export default function Attendance() {
   );
 
   return (
-    <View style={styles.gradientContainer}>
-      <View style={styles.container}>
-        <View style={styles.header}>
-          <Text style={styles.title}>Mark attendance</Text>
-          <Text style={styles.subtitle}>Selfie + GPS verification</Text>
-          <Text style={styles.modeText}>
-            Current action: {mode === "in" ? "Check-IN" : "Check-OUT (task required)"}
-          </Text>
+    <SafeAreaView style={styles.safe}>
+      <View style={styles.root}>
+        {/* light background with circles */}
+        <View style={styles.backgroundLayer}>
+          <View style={[styles.circle, styles.circleTop]} />
+          <View style={[styles.circle, styles.circleBottomLeft]} />
+          <View style={[styles.circle, styles.circleBottomRight]} />
+          <View style={[styles.circleSmall, styles.circleMiddle]} />
         </View>
 
-        {selfieUri ? (
-          <View style={styles.selfieCard}>
-            <Image source={{ uri: selfieUri }} style={styles.selfieImage} />
-            <View style={styles.selfieOverlay}>
-              <Ionicons name="checkmark-circle" size={32} color="#4ade80" />
-              <Text style={styles.selfieStatus}>Ready to submit</Text>
-            </View>
-          </View>
-        ) : (
-          <View style={styles.selfiePlaceholder}>
-            <Ionicons name="camera" size={64} color="#9ca3af" />
-            <Text style={styles.placeholderText}>
-              Tap the red camera button to take a selfie
-            </Text>
-          </View>
-        )}
-
-        {locationName && (
-          <View style={styles.locationCard}>
-            <Ionicons name="location" size={20} color="#10b981" />
-            <Text style={styles.locationText} numberOfLines={1}>
-              {locationName}
-            </Text>
-          </View>
-        )}
-
-        {mode === "out" && (
-          <View style={styles.taskContainer}>
-            <Text style={styles.taskLabel}>Task (what work you did)</Text>
-            <TextInput
-              style={styles.taskInput}
-              placeholder="Describe your work before OUT"
-              placeholderTextColor="#64748b"
-              value={task}
-              onChangeText={setTask}
-              multiline
-            />
-          </View>
-        )}
-
-        <TouchableOpacity
-          style={[
-            styles.submitButton,
-            (!selfieBase64 || !location || loading) &&
-              styles.submitButtonDisabled,
-          ]}
-          onPress={handleSubmit}
-          disabled={!selfieBase64 || !location || loading}
+        <ScrollView
+          style={{ flex: 1 }}
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
         >
-          {loading ? (
-            <ActivityIndicator color="#fff" size="small" />
-          ) : (
-            <>
-              <Ionicons name="checkmark" size={20} color="#fff" />
-              <Text style={styles.submitButtonText}>
-                {mode === "in" ? "Submit IN" : "Submit OUT"}
+          <View style={styles.container}>
+            <View style={styles.header}>
+              <Text style={styles.title}>Mark attendance</Text>
+              <Text style={styles.subtitle}>Selfie + GPS verification</Text>
+              <Text style={styles.modeText}>
+                Current action:{" "}
+                {mode === "in" ? "Check-IN" : "Check-OUT (task required)"}
               </Text>
-            </>
-          )}
-        </TouchableOpacity>
-
-        {submittedSelfie && (
-          <TouchableOpacity
-            style={styles.historyCard}
-            onPress={() => setModalVisible(true)}
-          >
-            <Image source={{ uri: submittedSelfie }} style={styles.historyImage} />
-            <View style={styles.historyOverlay}>
-              <Text style={styles.historyTitle}>Latest entry</Text>
-              <Ionicons name="chevron-forward" size={20} color="#fff" />
             </View>
-          </TouchableOpacity>
-        )}
+
+            {selfieUri ? (
+              <View style={styles.selfieCard}>
+                <Image source={{ uri: selfieUri }} style={styles.selfieImage} />
+                <View style={styles.selfieOverlay}>
+                  <Ionicons name="checkmark-circle" size={28} color="#22c55e" />
+                  <Text style={styles.selfieStatus}>Ready to submit</Text>
+                </View>
+              </View>
+            ) : (
+              <View style={styles.selfiePlaceholder}>
+                <Ionicons name="camera" size={56} color="#9ca3af" />
+                <Text style={styles.placeholderText}>
+                  Tap the red camera button to take a selfie
+                </Text>
+              </View>
+            )}
+
+            {locationName && (
+              <View style={styles.locationCard}>
+                <Ionicons name="location" size={18} color="#059669" />
+                <Text style={styles.locationText} numberOfLines={1}>
+                  {locationName}
+                </Text>
+              </View>
+            )}
+
+            {mode === "out" && (
+              <View style={styles.taskContainer}>
+                <Text style={styles.taskLabel}>Task (what work you did)</Text>
+                <TextInput
+                  style={styles.taskInput}
+                  placeholder="Describe your work before OUT"
+                  placeholderTextColor="#6b7280"
+                  value={task}
+                  onChangeText={setTask}
+                  multiline
+                />
+              </View>
+            )}
+
+            <TouchableOpacity
+              style={[
+                styles.submitButton,
+                (!selfieBase64 || !location || loading) &&
+                  styles.submitButtonDisabled,
+              ]}
+              onPress={handleSubmit}
+              disabled={!selfieBase64 || !location || loading}
+            >
+              {loading ? (
+                <ActivityIndicator color="#fff" size="small" />
+              ) : (
+                <>
+                  <Ionicons name="checkmark" size={18} color="#fff" />
+                  <Text style={styles.submitButtonText}>
+                    {mode === "in" ? "Submit IN" : "Submit OUT"}
+                  </Text>
+                </>
+              )}
+            </TouchableOpacity>
+
+            {submittedSelfie && (
+              <TouchableOpacity
+                style={styles.historyCard}
+                onPress={() => setModalVisible(true)}
+              >
+                <Image
+                  source={{ uri: submittedSelfie }}
+                  style={styles.historyImage}
+                />
+                <View style={styles.historyOverlay}>
+                  <Text style={styles.historyTitle}>Latest entry</Text>
+                  <Ionicons
+                    name="chevron-forward"
+                    size={18}
+                    color="#f9fafb"
+                  />
+                </View>
+              </TouchableOpacity>
+            )}
+          </View>
+        </ScrollView>
 
         {renderFloatingActionButton()}
 
@@ -314,13 +338,12 @@ export default function Attendance() {
                 style={styles.closeButton}
                 onPress={() => setModalVisible(false)}
               >
-                <Ionicons name="close" size={28} color="#fff" />
+                <Ionicons name="close" size={26} color="#fff" />
               </TouchableOpacity>
 
               <ScrollView
-                contentContainerStyle={styles.scrollContent}
+                contentContainerStyle={styles.modalScrollContent}
                 showsVerticalScrollIndicator={false}
-                scrollEnabled={false}
               >
                 {submittedSelfie ? (
                   <>
@@ -331,7 +354,6 @@ export default function Attendance() {
                         resizeMode="contain"
                       />
                     </View>
-
                     <View style={styles.modalInfo}>
                       <Text style={styles.modalLocation}>
                         📍 {locationName || "Location verified"}
@@ -351,180 +373,227 @@ export default function Attendance() {
           </View>
         </Modal>
       </View>
-    </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  gradientContainer: { flex: 1, backgroundColor: "#020617" },
-  container: { flex: 1, paddingTop: 60, paddingHorizontal: 24 },
-  header: { alignItems: "center", marginBottom: 24 },
-  title: {
-    fontSize: 24,
-    fontWeight: "800",
-    color: "#f9fafb",
-    textAlign: "center",
+  safe: {
+    flex: 1,
+    backgroundColor: "#e5f3ff",
   },
-  subtitle: { fontSize: 13, color: "#9ca3af", marginTop: 4, fontWeight: "500" },
+  root: {
+    flex: 1,
+    backgroundColor: "#e5f3ff",
+  },
+  backgroundLayer: {
+    ...StyleSheet.absoluteFillObject,
+    overflow: "hidden",
+  },
+  circle: {
+    position: "absolute",
+    width: 260,
+    height: 260,
+    borderRadius: 130,
+  },
+  circleSmall: {
+    position: "absolute",
+    width: 180,
+    height: 180,
+    borderRadius: 90,
+  },
+  circleTop: {
+    backgroundColor: "rgba(59,130,246,0.18)",
+    top: -120,
+    right: -80,
+  },
+  circleBottomLeft: {
+    backgroundColor: "rgba(22,163,74,0.14)",
+    bottom: -120,
+    left: -80,
+  },
+  circleBottomRight: {
+    backgroundColor: "rgba(249,115,22,0.12)",
+    bottom: -40,
+    right: -40,
+  },
+  circleMiddle: {
+    backgroundColor: "rgba(56,189,248,0.16)",
+    top: "40%",
+    left: -70,
+  },
+  scrollContent: {
+    flexGrow: 1,
+    paddingBottom: 24,
+  },
+  container: {
+    flexGrow: 1,
+    paddingHorizontal: 20,
+    paddingTop: 32,
+  },
+  header: {
+    alignItems: "center",
+    marginBottom: 18,
+  },
+  title: {
+    fontSize: 22,
+    fontWeight: "800",
+    color: "#0f172a",
+  },
+  subtitle: {
+    fontSize: 13,
+    color: "#64748b",
+    marginTop: 4,
+  },
   modeText: {
     fontSize: 12,
-    color: "#a5b4fc",
+    color: "#4b5563",
     marginTop: 6,
     fontWeight: "600",
   },
   selfieCard: {
-    backgroundColor: "rgba(15,23,42,0.98)",
-    borderRadius: 24,
-    padding: 16,
+    backgroundColor: "#ffffff",
+    borderRadius: 18,
+    padding: 14,
     alignItems: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 16 },
-    shadowOpacity: 0.25,
-    shadowRadius: 24,
-    elevation: 12,
-    marginBottom: 20,
+    shadowColor: "#0f172a",
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.12,
+    shadowRadius: 18,
+    elevation: 6,
+    marginBottom: 18,
     borderWidth: 1,
-    borderColor: "rgba(30,64,175,0.5)",
+    borderColor: "rgba(148,163,184,0.6)",
   },
   selfieImage: {
     width: "100%",
-    height: height * 0.35,
-    borderRadius: 20,
+    height: height * 0.32,
+    borderRadius: 14,
   },
   selfieOverlay: {
     position: "absolute",
     bottom: 16,
+    left: 16,
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "rgba(0,0,0,0.7)",
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
+    backgroundColor: "rgba(15,23,42,0.85)",
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderRadius: 999,
   },
   selfieStatus: {
-    color: "#fff",
-    fontWeight: "700",
+    color: "#f9fafb",
+    fontWeight: "600",
     fontSize: 13,
     marginLeft: 8,
   },
   selfiePlaceholder: {
-    backgroundColor: "rgba(15,23,42,0.95)",
-    borderRadius: 24,
+    backgroundColor: "#ffffff",
+    borderRadius: 18,
     padding: 40,
     alignItems: "center",
-    marginBottom: 20,
+    marginBottom: 18,
     borderWidth: 1,
-    borderColor: "rgba(30,64,175,0.5)",
+    borderColor: "rgba(148,163,184,0.6)",
   },
   placeholderText: {
-    color: "#e5e7eb",
+    color: "#4b5563",
     fontSize: 14,
     marginTop: 12,
-    fontWeight: "500",
     textAlign: "center",
   },
   locationCard: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "rgba(15,23,42,0.96)",
-    padding: 12,
-    borderRadius: 16,
-    marginBottom: 12,
+    backgroundColor: "#ecfdf5",
+    padding: 10,
+    borderRadius: 14,
+    marginBottom: 14,
     borderWidth: 1,
-    borderColor: "rgba(22,163,74,0.6)",
+    borderColor: "#bbf7d0",
   },
   locationText: {
-    color: "#bbf7d0",
-    fontSize: 14,
+    color: "#166534",
+    fontSize: 13,
     fontWeight: "600",
-    marginLeft: 10,
+    marginLeft: 8,
     flex: 1,
   },
   taskContainer: {
     marginBottom: 16,
   },
   taskLabel: {
-    color: "#e5e7eb",
+    color: "#0f172a",
     marginBottom: 4,
     fontSize: 13,
     fontWeight: "600",
   },
   taskInput: {
     borderWidth: 1,
-    borderColor: "#1f2937",
+    borderColor: "#cbd5e1",
     borderRadius: 10,
     paddingHorizontal: 12,
     paddingVertical: 8,
-    backgroundColor: "#020617",
-    color: "#e5e7eb",
+    backgroundColor: "#f8fafc",
+    color: "#0f172a",
     fontSize: 13,
     minHeight: 60,
     textAlignVertical: "top",
   },
   submitButton: {
     flexDirection: "row",
-    backgroundColor: "#10b981",
-    paddingVertical: 14,
+    backgroundColor: "#16a34a",
+    paddingVertical: 12,
     paddingHorizontal: 24,
-    borderRadius: 50,
+    borderRadius: 999,
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: 20,
-    shadowColor: "#059669",
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.4,
-    shadowRadius: 18,
-    elevation: 10,
+    marginBottom: 18,
   },
   submitButtonDisabled: {
-    backgroundColor: "#6b7280",
-    shadowColor: "#9ca3af",
+    backgroundColor: "#9ca3af",
   },
   submitButtonText: {
-    color: "#fff",
-    fontSize: 15,
-    fontWeight: "800",
-    marginLeft: 8,
+    color: "#ffffff",
+    fontSize: 14,
+    fontWeight: "700",
+    marginLeft: 6,
   },
   historyCard: {
-    backgroundColor: "rgba(15,23,42,0.96)",
-    borderRadius: 20,
+    backgroundColor: "#ffffff",
+    borderRadius: 18,
     overflow: "hidden",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.2,
+    shadowColor: "#0f172a",
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.12,
     shadowRadius: 16,
-    elevation: 10,
+    elevation: 6,
   },
-  historyImage: { width: "100%", height: 180 },
+  historyImage: { width: "100%", height: 160 },
   historyOverlay: {
     position: "absolute",
     bottom: 0,
     left: 0,
     right: 0,
-    backgroundColor: "rgba(0,0,0,0.8)",
+    backgroundColor: "rgba(15,23,42,0.82)",
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    padding: 16,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
   },
-  historyTitle: { color: "#fff", fontSize: 15, fontWeight: "700" },
+  historyTitle: { color: "#f9fafb", fontSize: 14, fontWeight: "600" },
   fab: {
     position: "absolute",
-    bottom: 32,
-    right: 24,
+    bottom: 26,
+    right: 22,
     width: 64,
     height: 64,
     borderRadius: 32,
     backgroundColor: "#ef4444",
     justifyContent: "center",
     alignItems: "center",
-    shadowColor: "#dc2626",
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.5,
-    shadowRadius: 20,
-    elevation: 14,
-    zIndex: 1000,
+    elevation: 10,
   },
   fabInner: {
     width: 64,
@@ -533,54 +602,58 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
-  modalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.9)" },
+  modalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.85)" },
   backgroundCloseArea: { flex: 1 },
   modalContent: {
     position: "absolute",
-    top: 40,
-    bottom: 40,
-    left: 20,
-    right: 20,
+    top: 50,
+    bottom: 50,
+    left: 24,
+    right: 24,
     backgroundColor: "#111827",
     borderRadius: 24,
     overflow: "hidden",
   },
   closeButton: {
     position: "absolute",
-    top: 20,
-    right: 20,
+    top: 18,
+    right: 18,
     zIndex: 10,
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     backgroundColor: "rgba(0,0,0,0.6)",
     justifyContent: "center",
     alignItems: "center",
   },
-  scrollContent: { flexGrow: 1, padding: 20 },
+  modalScrollContent: {
+    flexGrow: 1,
+    padding: 18,
+    paddingTop: 56,
+  },
   modalImageContainer: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    marginBottom: 20,
+    marginBottom: 16,
   },
-  modalImage: { width: "100%", height: 400, borderRadius: 16 },
-  modalInfo: { alignItems: "center", paddingTop: 10 },
+  modalImage: { width: "100%", height: 360, borderRadius: 18 },
+  modalInfo: { alignItems: "center", paddingTop: 8 },
   modalLocation: {
     fontSize: 15,
     color: "#e5e7eb",
     fontWeight: "600",
-    marginBottom: 8,
+    marginBottom: 6,
     textAlign: "center",
   },
   modalStatus: {
-    fontSize: 18,
-    color: "#10b981",
+    fontSize: 17,
+    color: "#22c55e",
     fontWeight: "800",
   },
   noDataText: {
     color: "#9ca3af",
-    fontSize: 16,
+    fontSize: 15,
     textAlign: "center",
     padding: 32,
   },
