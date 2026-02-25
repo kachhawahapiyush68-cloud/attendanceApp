@@ -1,5 +1,5 @@
 // app/admin/dashboard.tsx
-import React, { useRef } from "react";
+import React, { useRef, useEffect, useState } from "react";
 import {
   View,
   Text,
@@ -14,11 +14,16 @@ import {
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuthStore, useDisplayName } from "../../Store/authStore";
+import api from "../../services/api"; // make sure this path matches your project
 
 export default function AdminDashboard() {
   const router = useRouter();
   const logout = useAuthStore((state) => state.logout);
   const displayName = useDisplayName();
+
+  // NEW: unread notifications count
+  const [unreadCount, setUnreadCount] = useState<number>(0);
+  const [loadingUnread, setLoadingUnread] = useState<boolean>(false);
 
   const cardScale = {
     register: useRef(new Animated.Value(1)).current,
@@ -54,6 +59,35 @@ export default function AdminDashboard() {
     } catch (e: any) {
       Alert.alert("Error", e?.message || "Logout failed");
     }
+  };
+
+  // NEW: load unread notifications count
+  const loadUnreadCount = async () => {
+    try {
+      setLoadingUnread(true);
+      const res = await api.get("/notifications/unread-count");
+      if (res.data?.success && typeof res.data.unreadCount === "number") {
+        setUnreadCount(res.data.unreadCount);
+      } else {
+        setUnreadCount(0);
+      }
+    } catch (e) {
+      console.log("Unread count error:", e);
+      setUnreadCount(0);
+    } finally {
+      setLoadingUnread(false);
+    }
+  };
+
+  useEffect(() => {
+    loadUnreadCount();
+  }, []);
+
+  // Optionally refresh badge when returning from notifications screen
+  const goToNotifications = () => {
+    router.push("/admin/notifications");
+    // you can also reload after some delay or via focus listener
+    // loadUnreadCount();
   };
 
   return (
@@ -232,7 +266,7 @@ export default function AdminDashboard() {
               activeOpacity={0.9}
               onPressIn={() => animatePressIn(cardScale.notifications)}
               onPressOut={() => animatePressOut(cardScale.notifications)}
-              onPress={() => router.push("/admin/notifications")}
+              onPress={goToNotifications}
             >
               <Animated.View
                 style={[
@@ -247,6 +281,14 @@ export default function AdminDashboard() {
                     size={26}
                     color="#c2410c"
                   />
+                  {/* NEW: badge over icon */}
+                  {!loadingUnread && unreadCount > 0 && (
+                    <View style={styles.badge}>
+                      <Text style={styles.badgeText}>
+                        {unreadCount > 99 ? "99+" : unreadCount}
+                      </Text>
+                    </View>
+                  )}
                 </View>
                 <View style={styles.cardText}>
                   <Text style={styles.cardTitle}>Notifications</Text>
@@ -578,5 +620,23 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     backgroundColor: "#e5f3ff",
     marginLeft: 8,
+  },
+  // NEW: badge styles
+  badge: {
+    position: "absolute",
+    top: -4,
+    right: -4,
+    minWidth: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: "#ef4444",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 3,
+  },
+  badgeText: {
+    color: "#ffffff",
+    fontSize: 10,
+    fontWeight: "700",
   },
 });

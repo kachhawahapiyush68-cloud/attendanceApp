@@ -15,7 +15,6 @@ import {
   TextInput,
   SafeAreaView,
 } from "react-native";
-import { useRouter } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
 import * as Location from "expo-location";
 import { Ionicons } from "@expo/vector-icons";
@@ -31,8 +30,6 @@ import {
 const { height } = Dimensions.get("window");
 
 export default function Attendance() {
-  const router = useRouter();
-
   const [selfieUri, setSelfieUri] = useState<string | null>(null);
   const [selfieBase64, setSelfieBase64] = useState<string | null>(null);
   const [submittedSelfie, setSubmittedSelfie] = useState<string | null>(null);
@@ -41,7 +38,7 @@ export default function Attendance() {
   const [locationName, setLocationName] = useState<string | null>(null);
   const [modalVisible, setModalVisible] = useState(false);
   const [scaleValue] = useState(new Animated.Value(1));
-  const [mode, setMode] = useState<ModeType>("in");
+  const [mode, setMode] = useState<ModeType>("in"); // "in" or "out"
   const [task, setTask] = useState<string>("");
 
   const pulseAnimation = (value: Animated.Value) => {
@@ -65,6 +62,7 @@ export default function Attendance() {
     const init = async () => {
       try {
         const state = await fetchTodayStatus();
+        // if already IN → show OUT, else start with IN
         if (state === "in") {
           setMode("out");
         } else {
@@ -159,6 +157,7 @@ export default function Attendance() {
       const deviceId =
         Device.osInternalBuildId ?? Device.deviceName ?? "unknown";
 
+      // TODO: replace 1 with real officeId if needed
       const officeId = 1;
 
       const res = await markAttendanceRequest(
@@ -174,30 +173,29 @@ export default function Attendance() {
         networkType
       );
 
-      // These may be undefined depending on backend response; guard them
-      const recLocation = res?.record?.location || locationName || "your location";
+      if (res?.record?.location) {
+        setLocationName(res.record.location);
+      }
+      if (res?.record?.selfie) {
+        setSubmittedSelfie(res.record.selfie);
+      }
 
       const approval =
         res?.approvalStatus === "PENDING_APPROVAL"
           ? "Pending approval"
           : "Approved (auto)";
 
-      // Show info but do NOT depend on alert to navigate
       Alert.alert(
         approval,
-        `Attendance ${mode.toUpperCase()} recorded at ${recLocation}`
+        `Attendance ${mode.toUpperCase()} recorded at ${
+          res?.record?.location || locationName || "your location"
+        }`
       );
 
-      // Important: navigate immediately after success
-      router.replace("/employee/dashboard");
-
-      // Optional: update local state in case user comes back later
+      // Next mode toggles after success
       setMode((prev) => (prev === "in" ? "out" : "in"));
       if (mode === "out") {
         setTask("");
-      }
-      if (res?.record?.selfie) {
-        setSubmittedSelfie(res.record.selfie);
       }
     } catch (err: any) {
       Alert.alert("Error", err?.message || "Failed to mark attendance");
@@ -221,6 +219,7 @@ export default function Attendance() {
   return (
     <SafeAreaView style={styles.safe}>
       <View style={styles.root}>
+        {/* light background with circles */}
         <View style={styles.backgroundLayer}>
           <View style={[styles.circle, styles.circleTop]} />
           <View style={[styles.circle, styles.circleBottomLeft]} />

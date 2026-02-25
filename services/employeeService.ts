@@ -2,7 +2,8 @@
 import { api } from "./api";
 
 export interface Employee {
-  id: string;
+  id: number;      // DB primary key
+  code: string;    // login/user_id/userid string
   name: string;
 }
 
@@ -30,11 +31,13 @@ export async function fetchEmployees(): Promise<Employee[]> {
     }
 
     return employeesArray
-      .map((emp: any) => ({
-        id: emp.user_id || emp.id || emp._id || "",
-        name: emp.name || emp.fullName || "Unknown Employee",
+      .map((emp: any): Employee => ({
+        id: Number(emp.id ?? emp._id ?? 0),
+        // this is the real user code used for login / notifications
+        code: String(emp.user_id ?? emp.userid ?? emp.code ?? ""),
+        name: String(emp.name ?? emp.fullName ?? "Unknown Employee"),
       }))
-      .filter((emp) => emp.id);
+      .filter((emp) => !!emp.code);
   } catch {
     return [];
   }

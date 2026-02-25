@@ -3,6 +3,7 @@ import React, { useEffect, useState } from "react";
 import { View, ActivityIndicator } from "react-native";
 import { Redirect } from "expo-router";
 import { useAuthStore } from "../Store/authStore";
+import "expo-router/entry";
 
 export default function Index() {
   const token = useAuthStore((state) => state.token);
