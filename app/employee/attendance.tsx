@@ -220,7 +220,7 @@ export default function Attendance() {
           },
         ]
       );
-
+      
       setMode((prev) => (prev === "in" ? "out" : "in"));
       if (mode === "out") {
         setTask("");
