@@ -55,6 +55,12 @@ function LayoutContent() {
           }}
         />
         <Stack.Screen
+          name="admin/employee-edit"
+          options={{
+            title: makeTitle("Edit Employee", "Edit Employee"),
+          }}
+        />
+        <Stack.Screen
           name="admin/offices"
           options={{
             title: makeTitle("Offices", "Offices"),

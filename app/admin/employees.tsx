@@ -93,17 +93,13 @@ export default function EmployeesScreen() {
     const email = (e.email || "").toLowerCase();
     const mob = (e.mobileno || "").toLowerCase();
     return (
-      uid.includes(q) ||
-      name.includes(q) ||
-      email.includes(q) ||
-      mob.includes(q)
+      uid.includes(q) || name.includes(q) || email.includes(q) || mob.includes(q)
     );
   });
 
   return (
     <SafeAreaView style={styles.safe}>
       <View style={styles.root}>
-        {/* soft background */}
         <View style={styles.backgroundLayer}>
           <View style={[styles.circle, styles.circleTop]} />
           <View style={[styles.circle, styles.circleBottomLeft]} />
@@ -141,6 +137,7 @@ export default function EmployeesScreen() {
                     .toUpperCase()}
                 </Text>
               </View>
+
               <View style={styles.cardMain}>
                 <Text style={styles.name}>{item.name || "No name"}</Text>
                 <Text style={styles.meta}>ID · {item.user_id}</Text>
@@ -150,26 +147,52 @@ export default function EmployeesScreen() {
                 </Text>
                 <Text style={styles.meta}>Role · {item.role || "-"}</Text>
 
-                <TouchableOpacity
-                  style={styles.locationBtn}
-                  onPress={() =>
-                    router.push({
-                      pathname: "/admin/employee-locations",
-                      params: {
-                        userId: String(item.id),
-                        name: item.name || item.user_id,
-                      },
-                    })
-                  }
-                >
-                  <Ionicons
-                    name="location-sharp"
-                    size={14}
-                    color="#0f172a"
-                    style={{ marginRight: 4 }}
-                  />
-                  <Text style={styles.locationBtnText}>Manage locations</Text>
-                </TouchableOpacity>
+                <View style={styles.actionsRow}>
+                  <TouchableOpacity
+                    style={styles.locationBtn}
+                    onPress={() =>
+                      router.push({
+                        pathname: "/admin/employee-locations",
+                        params: {
+                          userId: String(item.id),
+                          name: item.name || item.user_id,
+                        },
+                      })
+                    }
+                  >
+                    <Ionicons
+                      name="location-sharp"
+                      size={14}
+                      color="#0f172a"
+                      style={{ marginRight: 4 }}
+                    />
+                    <Text style={styles.locationBtnText}>
+                      Manage locations
+                    </Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={styles.editBtn}
+                    onPress={() =>
+                      router.push({
+                        pathname: "/admin/employee-edit",
+                        params: {
+                          id: String(item.id),
+                          user_id: item.user_id,
+                          name: item.name || "",
+                        },
+                      })
+                    }
+                  >
+                    <Ionicons
+                      name="create-outline"
+                      size={14}
+                      color="#0f172a"
+                      style={{ marginRight: 4 }}
+                    />
+                    <Text style={styles.editBtnText}>Edit</Text>
+                  </TouchableOpacity>
+                </View>
               </View>
 
               <View style={styles.statusBlock}>
@@ -301,6 +324,10 @@ const styles = StyleSheet.create({
     color: "#6b7280",
     marginTop: 1,
   },
+  actionsRow: {
+    flexDirection: "row",
+    marginTop: 6,
+  },
   statusBlock: {
     alignItems: "flex-end",
     justifyContent: "space-between",
@@ -324,18 +351,30 @@ const styles = StyleSheet.create({
     color: "#b91c1c",
   },
   locationBtn: {
-    marginTop: 6,
     paddingHorizontal: 10,
     paddingVertical: 5,
     borderRadius: 999,
     backgroundColor: "#e0f2fe",
-    alignSelf: "flex-start",
     flexDirection: "row",
     alignItems: "center",
+    marginRight: 8,
   },
   locationBtnText: {
     fontSize: 12,
     color: "#0f172a",
+    fontWeight: "600",
+  },
+  editBtn: {
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 999,
+    backgroundColor: "#fee2e2",
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  editBtnText: {
+    fontSize: 12,
+    color: "#b91c1c",
     fontWeight: "600",
   },
   emptyText: {

@@ -21,6 +21,12 @@ interface ReportResponse {
   records?: any[];
 }
 
+// Build BASE_URL same way as attendanceService
+let rawBase =
+  process.env.EXPO_PUBLIC_API_URL || "https://attendance.edgesoftwares.in";
+if (rawBase.endsWith("/")) rawBase = rawBase.slice(0, -1);
+const BASE_URL = rawBase;
+
 /**
  * Fetch attendance report.
  *
@@ -69,10 +75,12 @@ export async function fetchReport(
 
     return records.map((rec: any): ReportItem => {
       let selfieUrl = rec.selfie || null;
-      if (selfieUrl && typeof selfieUrl === "string" && !selfieUrl.startsWith("http")) {
-        // backend only returns full URLs for public images;
-        // anything else we treat as null here
-        selfieUrl = null;
+      if (
+        selfieUrl &&
+        typeof selfieUrl === "string" &&
+        !/^https?:\/\//i.test(selfieUrl)
+      ) {
+        selfieUrl = `${BASE_URL}${selfieUrl.startsWith("/") ? "" : "/"}${selfieUrl}`;
       }
 
       const rawStatus = rec.status;
@@ -102,8 +110,8 @@ export async function fetchReport(
         status: statusStr,
         selfie: selfieUrl,
         location: rec.location || "Not tracked",
-        in: rec.in || null,
-        out: rec.out || null,
+        in: rec.in || null, // already IST HH:mm from backend
+        out: rec.out || null, // already IST HH:mm
         workType: rec.workType,
         hoursWorked,
         overtimeHours,

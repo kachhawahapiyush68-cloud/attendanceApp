@@ -30,7 +30,7 @@ export default function AdminNotificationsScreen() {
 
   // single employee
   const [searchEmployee, setSearchEmployee] = useState("");
-  const [targetUserCode, setTargetUserCode] = useState("");
+  const [targetUserId, setTargetUserId] = useState("");
 
   // multiple employees
   const [searchMultiEmployee, setSearchMultiEmployee] = useState("");
@@ -62,7 +62,7 @@ export default function AdminNotificationsScreen() {
       if (!q.trim()) return employees;
       const query = q.toLowerCase();
       return employees.filter((e) => {
-        const code = (e.code || "").toLowerCase();
+        const code = (e.id || "").toLowerCase();
         const name = (e.name || "").toLowerCase();
         return code.includes(query) || name.includes(query);
       });
@@ -81,13 +81,13 @@ export default function AdminNotificationsScreen() {
   );
 
   const isEmployeeSelected = useCallback(
-    (emp: Employee) => selectedEmployees.some((e) => e.code === emp.code),
+    (emp: Employee) => selectedEmployees.some((e) => e.id === emp.id),
     [selectedEmployees]
   );
 
   const toggleSelectEmployee = (emp: Employee) => {
     if (isEmployeeSelected(emp)) {
-      setSelectedEmployees((prev) => prev.filter((e) => e.code !== emp.code));
+      setSelectedEmployees((prev) => prev.filter((e) => e.id !== emp.id));
     } else {
       setSelectedEmployees((prev) => [...prev, emp]);
     }
@@ -110,7 +110,6 @@ export default function AdminNotificationsScreen() {
     loadNotifications();
   }, [loadNotifications]);
 
-  // sort newest on top
   const sortedNotifications = useMemo(() => {
     return [...notifications].sort(
       (a, b) =>
@@ -156,13 +155,11 @@ export default function AdminNotificationsScreen() {
       return "Message must be at least 5 characters";
 
     if (audience === "single") {
-      if (!targetUserCode.trim()) {
+      if (!targetUserId.trim()) {
         return "Employee User ID is required for single user notification";
       }
       const emp = employees.find(
-        (e) =>
-          (e.code || "").toLowerCase() ===
-          targetUserCode.trim().toLowerCase()
+        (e) => e.id.toLowerCase() === targetUserId.trim().toLowerCase()
       );
       if (!emp) {
         return "Selected employee not found. Please pick from suggestions.";
@@ -204,10 +201,10 @@ export default function AdminNotificationsScreen() {
                 title,
                 message,
                 audience: "single",
-                userid: targetUserCode.trim(), // backend expects userid
+                userid: targetUserId.trim(), // this is Employee.id
               });
             } else {
-              const ids = selectedEmployees.map((e) => e.code);
+              const ids = selectedEmployees.map((e) => e.id);
               await sendAdminBroadcast({
                 title,
                 message,
@@ -221,7 +218,7 @@ export default function AdminNotificationsScreen() {
             setTitle("");
             setMessage("");
             setAudience("all");
-            setTargetUserCode("");
+            setTargetUserId("");
             setSearchEmployee("");
             setSearchMultiEmployee("");
             setSelectedEmployees([]);
@@ -291,14 +288,14 @@ export default function AdminNotificationsScreen() {
     return (
       <View style={styles.chipsContainer}>
         {selectedEmployees.map((e) => (
-          <View key={e.code} style={styles.chip}>
+          <View key={e.id} style={styles.chip}>
             <Text style={styles.chipText}>
-              {e.code} · {e.name || "No name"}
+              {e.id} · {e.name || "No name"}
             </Text>
             <TouchableOpacity
               onPress={() =>
                 setSelectedEmployees((prev) =>
-                  prev.filter((p) => p.code !== e.code)
+                  prev.filter((p) => p.id !== e.id)
                 )
               }
             >
@@ -334,6 +331,7 @@ export default function AdminNotificationsScreen() {
               Send important messages to all employees or specific users.
             </Text>
 
+            {/* SEND FORM */}
             <View style={styles.card}>
               <Text style={styles.label}>Title *</Text>
               <TextInput
@@ -420,7 +418,7 @@ export default function AdminNotificationsScreen() {
                     value={searchEmployee}
                     onChangeText={(text) => {
                       setSearchEmployee(text);
-                      setTargetUserCode(text);
+                      setTargetUserId(text);
                     }}
                     autoCapitalize="none"
                     autoCorrect={false}
@@ -434,12 +432,12 @@ export default function AdminNotificationsScreen() {
                           key={e.id}
                           style={styles.suggestionItem}
                           onPress={() => {
-                            setTargetUserCode(e.code);
-                            setSearchEmployee(`${e.code} - ${e.name || ""}`);
+                            setTargetUserId(e.id);
+                            setSearchEmployee(`${e.id} - ${e.name || ""}`);
                           }}
                         >
                           <Text style={styles.suggestionText}>
-                            {e.code} · {e.name || "No name"}
+                            {e.id} · {e.name || "No name"}
                           </Text>
                         </TouchableOpacity>
                       ))}
@@ -451,7 +449,7 @@ export default function AdminNotificationsScreen() {
                       Example IDs:{" "}
                       {employees
                         .slice(0, 3)
-                        .map((e) => e.code)
+                        .map((e) => e.id)
                         .join(", ")}
                       {employees.length > 3 ? "..." : ""}
                     </Text>
@@ -495,7 +493,7 @@ export default function AdminNotificationsScreen() {
                                   selected && styles.suggestionTextSelected,
                                 ]}
                               >
-                                {e.code} · {e.name || "No name"}
+                                {e.id} · {e.name || "No name"}
                               </Text>
                             </TouchableOpacity>
                           );
@@ -520,6 +518,7 @@ export default function AdminNotificationsScreen() {
               </TouchableOpacity>
             </View>
 
+            {/* NOTIFICATIONS LIST + SEARCH */}
             <Text style={styles.sectionHeader}>Messages / broadcasts</Text>
 
             <TextInput

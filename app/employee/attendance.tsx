@@ -15,6 +15,7 @@ import {
   TextInput,
   SafeAreaView,
 } from "react-native";
+import { useRouter } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
 import * as Location from "expo-location";
 import { Ionicons } from "@expo/vector-icons";
@@ -29,7 +30,21 @@ import {
 
 const { height } = Dimensions.get("window");
 
+// Convert UTC string from backend to IST HH:mm format for display
+function utcStringToISTTime(utcString: string): string {
+  const d = new Date(utcString); // parsed as UTC
+  const IST_OFFSET_MIN = 5.5 * 60;
+  const utcMs = d.getTime();
+  const istMs = utcMs + IST_OFFSET_MIN * 60 * 1000;
+  const ist = new Date(istMs);
+  const hh = ist.getHours().toString().padStart(2, "0");
+  const mm = ist.getMinutes().toString().padStart(2, "0");
+  return `${hh}:${mm}`;
+}
+
 export default function Attendance() {
+  const router = useRouter();
+
   const [selfieUri, setSelfieUri] = useState<string | null>(null);
   const [selfieBase64, setSelfieBase64] = useState<string | null>(null);
   const [submittedSelfie, setSubmittedSelfie] = useState<string | null>(null);
@@ -38,7 +53,7 @@ export default function Attendance() {
   const [locationName, setLocationName] = useState<string | null>(null);
   const [modalVisible, setModalVisible] = useState(false);
   const [scaleValue] = useState(new Animated.Value(1));
-  const [mode, setMode] = useState<ModeType>("in"); // "in" or "out"
+  const [mode, setMode] = useState<ModeType>("in");
   const [task, setTask] = useState<string>("");
 
   const pulseAnimation = (value: Animated.Value) => {
@@ -62,7 +77,6 @@ export default function Attendance() {
     const init = async () => {
       try {
         const state = await fetchTodayStatus();
-        // if already IN → show OUT, else start with IN
         if (state === "in") {
           setMode("out");
         } else {
@@ -112,7 +126,7 @@ export default function Attendance() {
         const loc = await Location.getCurrentPositionAsync({
           accuracy: Location.Accuracy.High,
         });
-        const coords = {
+        const coords: LocationData = {
           latitude: loc.coords.latitude,
           longitude: loc.coords.longitude,
         };
@@ -157,8 +171,7 @@ export default function Attendance() {
       const deviceId =
         Device.osInternalBuildId ?? Device.deviceName ?? "unknown";
 
-      // TODO: replace 1 with real officeId if needed
-      const officeId = 1;
+      const officeId = 1; // TODO: replace with real officeId from user/selection
 
       const res = await markAttendanceRequest(
         officeId,
@@ -185,14 +198,29 @@ export default function Attendance() {
           ? "Pending approval"
           : "Approved (auto)";
 
+      // Decide which time to show (IN or OUT), convert to IST
+      let timeLabel = "";
+      if (mode === "in" && res?.record?.in_time) {
+        timeLabel = utcStringToISTTime(res.record.in_time);
+      } else if (mode === "out" && res?.record?.out_time) {
+        timeLabel = utcStringToISTTime(res.record.out_time);
+      }
+
       Alert.alert(
         approval,
         `Attendance ${mode.toUpperCase()} recorded at ${
-          res?.record?.location || locationName || "your location"
-        }`
+          timeLabel ? `${timeLabel} (IST)` : "your location"
+        }\n${res?.record?.location || locationName || ""}`,
+        [
+          {
+            text: "OK",
+            onPress: () => {
+              router.replace("/employee/dashboard");
+            },
+          },
+        ]
       );
 
-      // Next mode toggles after success
       setMode((prev) => (prev === "in" ? "out" : "in"));
       if (mode === "out") {
         setTask("");
@@ -219,7 +247,6 @@ export default function Attendance() {
   return (
     <SafeAreaView style={styles.safe}>
       <View style={styles.root}>
-        {/* light background with circles */}
         <View style={styles.backgroundLayer}>
           <View style={[styles.circle, styles.circleTop]} />
           <View style={[styles.circle, styles.circleBottomLeft]} />
@@ -246,7 +273,11 @@ export default function Attendance() {
               <View style={styles.selfieCard}>
                 <Image source={{ uri: selfieUri }} style={styles.selfieImage} />
                 <View style={styles.selfieOverlay}>
-                  <Ionicons name="checkmark-circle" size={28} color="#22c55e" />
+                  <Ionicons
+                    name="checkmark-circle"
+                    size={28}
+                    color="#22c55e"
+                  />
                   <Text style={styles.selfieStatus}>Ready to submit</Text>
                 </View>
               </View>
@@ -377,6 +408,8 @@ export default function Attendance() {
   );
 }
 
+const { height: winHeight } = Dimensions.get("window");
+
 const styles = StyleSheet.create({
   safe: {
     flex: 1,
@@ -467,7 +500,7 @@ const styles = StyleSheet.create({
   },
   selfieImage: {
     width: "100%",
-    height: height * 0.32,
+    height: winHeight * 0.32,
     borderRadius: 14,
   },
   selfieOverlay: {

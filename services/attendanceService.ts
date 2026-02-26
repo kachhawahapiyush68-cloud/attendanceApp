@@ -1,8 +1,8 @@
 // services/attendanceService.ts
 import { useAuthStore } from "../Store/authStore";
 
-type StatusType = "present" | "absent" | "late" | "half_day";
-type WorkType = "office" | "home";
+export type StatusType = "present" | "absent" | "late" | "half_day";
+export type WorkType = "office" | "home";
 export type ModeType = "in" | "out";
 
 export interface LocationData {
@@ -10,22 +10,29 @@ export interface LocationData {
   longitude: number;
 }
 
-interface AttendanceRecord {
+export interface AttendanceRecord {
   location?: string;
-  selfie?: string;
+  selfie?: string | null;
   status?: string;
   date?: string;
+  in_time?: string | null;
+  out_time?: string | null;
 }
 
-interface AttendanceResponse {
+export interface AttendanceResponse {
+  success?: boolean;
   record?: AttendanceRecord;
   message?: string;
   approvalStatus?: "APPROVED_AUTO" | "PENDING_APPROVAL";
   mode?: ModeType;
+  isWithinRadius?: boolean;
+  distanceMeters?: number | null;
 }
 
-const BASE_URL =
-  process.env.EXPO_PUBLIC_API_URL || "http://192.168.1.80:3001";
+let rawBase =
+  process.env.EXPO_PUBLIC_API_URL || "https://attendance.edgesoftwares.in";
+if (rawBase.endsWith("/")) rawBase = rawBase.slice(0, -1);
+const BASE_URL = rawBase;
 
 export async function markAttendanceRequest(
   officeId: number,

@@ -218,7 +218,7 @@ export default function ReportsScreen() {
               <FlatList
                 data={report}
                 keyExtractor={(item, idx) =>
-                  String((item as any).id ?? `${item.user_id}-${item.date}-${idx}`)
+                  `${item.user_id}-${item.date}-${idx}`
                 }
                 scrollEnabled={false}
                 contentContainerStyle={styles.listContent}

@@ -72,16 +72,8 @@ export default function EmployeeHistoryScreen() {
   // initial range = whole current month, then load once
   useEffect(() => {
     const now = new Date();
-    const firstOfMonth = new Date(
-      now.getFullYear(),
-      now.getMonth(),
-      1
-    );
-    const lastOfMonth = new Date(
-      now.getFullYear(),
-      now.getMonth() + 1,
-      0
-    );
+    const firstOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const lastOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
     setFromDate(firstOfMonth);
     setToDate(lastOfMonth);
     setMonth(String(now.getMonth() + 1));
@@ -198,7 +190,7 @@ export default function EmployeeHistoryScreen() {
               </View>
             </View>
 
-            {/* Apply filters button (like admin screen, but no employee ID) */}
+            {/* Apply filters button */}
             <TouchableOpacity
               style={[styles.button, loading && styles.buttonDisabled]}
               onPress={loadReport}
