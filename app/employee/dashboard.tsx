@@ -1,5 +1,5 @@
 // app/employee/dashboard.tsx
-import React from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import {
   View,
   Text,
@@ -11,6 +11,7 @@ import {
 } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { useAuthStore, useDisplayName } from "../../Store/authStore";
+import { fetchUnreadCount } from "../../services/notificationService";
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 
@@ -20,10 +21,32 @@ export default function EmployeeDashboard() {
   const displayName = useDisplayName();
   const { error } = useLocalSearchParams();
 
+  const [unreadCount, setUnreadCount] = useState(0);
+
   const handleLogout = async () => {
     await logout();
     router.replace("/login");
   };
+
+  const loadUnread = useCallback(async () => {
+    try {
+      const count = await fetchUnreadCount();
+      setUnreadCount(count);
+    } catch (e) {
+      // silently ignore
+      console.log("fetchUnreadCount error:", e);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadUnread();
+
+    // optional: refresh when screen gains focus if you use expo-router events
+    // return router.addListener("focus", loadUnread);
+  }, [loadUnread]);
+
+  const hasUnread = unreadCount > 0;
+  const badgeLabel = unreadCount > 99 ? "99+" : String(unreadCount);
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -98,9 +121,17 @@ export default function EmployeeDashboard() {
               onPress={() => router.push("/employee/notifications")}
               activeOpacity={0.9}
             >
-              <View style={[styles.iconCircle, styles.iconCircleOrange]}>
-                <Text style={styles.iconText}>🔔</Text>
+              <View style={styles.iconWithBadgeWrapper}>
+                <View style={[styles.iconCircle, styles.iconCircleOrange]}>
+                  <Text style={styles.iconText}>🔔</Text>
+                </View>
+                {hasUnread && (
+                  <View style={styles.badge}>
+                    <Text style={styles.badgeText}>{badgeLabel}</Text>
+                  </View>
+                )}
               </View>
+
               <View style={styles.cardContent}>
                 <Text style={styles.cardTitle}>Notifications</Text>
                 <Text style={styles.cardSubtitle}>
@@ -260,6 +291,26 @@ const styles = StyleSheet.create({
     fontSize: Math.min(22, SCREEN_WIDTH * 0.055),
     color: "#0f172a",
     fontWeight: "bold",
+  },
+  iconWithBadgeWrapper: {
+    marginRight: 14,
+  },
+  badge: {
+    position: "absolute",
+    top: -4,
+    right: -4,
+    minWidth: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: "#ef4444",
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: 4,
+  },
+  badgeText: {
+    color: "#ffffff",
+    fontSize: 10,
+    fontWeight: "700",
   },
   cardContent: { flex: 1 },
   cardTitle: {

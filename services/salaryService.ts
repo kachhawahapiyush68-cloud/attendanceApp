@@ -5,10 +5,17 @@ import type { SalaryType } from "./salaryRateService";
 export interface SalaryItem {
   user_id: string;
   name: string;
+
+  // hourly
   totalHours: number;
   totalOvertime: number;
   hourlyRate: number;
   overtimeHourlyRate: number;
+
+  // fixed
+  presentDays: number;
+  totalDaysInMonth: number;
+
   basePay: number;
   overtimePay: number;
   totalPay: number;
@@ -38,6 +45,7 @@ export async function fetchSalarySummary(
   return res.data.items.map((item: any): SalaryItem => ({
     user_id: item.user_id || "",
     name: item.name || "Unknown",
+
     totalHours:
       typeof item.totalHours === "number"
         ? item.totalHours
@@ -58,6 +66,16 @@ export async function fetchSalarySummary(
       typeof item.overtimeHourlyRate === "number"
         ? item.overtimeHourlyRate
         : Number(item.overtimeHourlyRate || 0),
+
+    presentDays:
+      typeof item.presentDays === "number"
+        ? item.presentDays
+        : Number(item.presentDays || 0),
+    totalDaysInMonth:
+      typeof item.totalDaysInMonth === "number"
+        ? item.totalDaysInMonth
+        : Number(item.totalDaysInMonth || 0),
+
     basePay:
       typeof item.basePay === "number"
         ? item.basePay
@@ -70,7 +88,7 @@ export async function fetchSalarySummary(
       typeof item.totalPay === "number"
         ? item.totalPay
         : Number(item.totalPay || 0),
-    // from backend: salaryType or salary_type
+
     salaryType:
       item.salaryType === "fixed" || item.salary_type === "fixed"
         ? "fixed"

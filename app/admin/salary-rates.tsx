@@ -182,7 +182,9 @@ export default function AdminSalaryRatesScreen() {
                       styles.typeChip,
                       item.salaryType === "hourly" && styles.typeChipActive,
                     ]}
-                    onPress={() => handleSalaryTypeChange(item.user_id, "hourly")}
+                    onPress={() =>
+                      handleSalaryTypeChange(item.user_id, "hourly")
+                    }
                   >
                     <Text
                       style={[
@@ -200,7 +202,9 @@ export default function AdminSalaryRatesScreen() {
                       styles.typeChip,
                       item.salaryType === "fixed" && styles.typeChipActive,
                     ]}
-                    onPress={() => handleSalaryTypeChange(item.user_id, "fixed")}
+                    onPress={() =>
+                      handleSalaryTypeChange(item.user_id, "fixed")
+                    }
                   >
                     <Text
                       style={[

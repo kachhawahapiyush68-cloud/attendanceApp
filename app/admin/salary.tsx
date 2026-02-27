@@ -133,48 +133,81 @@ export default function AdminSalaryScreen() {
               data={filteredItems}
               keyExtractor={keyExtractor}
               contentContainerStyle={styles.listContent}
-              renderItem={({ item }) => (
-                <View style={styles.card}>
-                  <View style={styles.cardHeader}>
-                    <View>
-                      <Text style={styles.name}>{item.name}</Text>
-                      <Text style={styles.code}>{item.user_id}</Text>
-                      {item.salaryType && (
-                        <Text style={styles.typeText}>
-                          {item.salaryType === "fixed" ? "Fixed salary" : "Hourly"}
-                        </Text>
-                      )}
+              renderItem={({ item }) => {
+                const isFixed = item.salaryType === "fixed";
+
+                return (
+                  <View style={styles.card}>
+                    <View style={styles.cardHeader}>
+                      <View>
+                        <Text style={styles.name}>{item.name}</Text>
+                        <Text style={styles.code}>{item.user_id}</Text>
+                        {item.salaryType && (
+                          <Text style={styles.typeText}>
+                            {isFixed
+                              ? "Fixed salary (pro-rated by present days)"
+                              : "Hourly"}
+                          </Text>
+                        )}
+                      </View>
+                      <Text style={styles.total}>
+                        ₹ {item.totalPay.toFixed(2)}
+                      </Text>
                     </View>
-                    <Text style={styles.total}>
-                      ₹ {item.totalPay.toFixed(2)}
-                    </Text>
-                  </View>
 
-                  <View style={styles.row}>
-                    <Text style={styles.label}>Hours</Text>
-                    <Text style={styles.value}>
-                      {item.totalHours.toFixed(2)} (OT{" "}
-                      {item.totalOvertime.toFixed(2)})
-                    </Text>
-                  </View>
+                    {isFixed ? (
+                      <>
+                        <View style={styles.row}>
+                          <Text style={styles.label}>Present days</Text>
+                          <Text style={styles.value}>
+                            {item.presentDays} / {item.totalDaysInMonth}
+                          </Text>
+                        </View>
 
-                  <View style={styles.row}>
-                    <Text style={styles.label}>Rate</Text>
-                    <Text style={styles.value}>
-                      {item.hourlyRate.toFixed(2)} | OT{" "}
-                      {item.overtimeHourlyRate.toFixed(2)}
-                    </Text>
-                  </View>
+                        <View style={styles.row}>
+                          <Text style={styles.label}>Monthly fixed</Text>
+                          <Text style={styles.value}>
+                            ₹ {item.basePay.toFixed(2)} (pro-rated)
+                          </Text>
+                        </View>
 
-                  <View style={styles.row}>
-                    <Text style={styles.label}>Breakdown</Text>
-                    <Text style={styles.value}>
-                      Base {item.basePay.toFixed(2)} | OT{" "}
-                      {item.overtimePay.toFixed(2)}
-                    </Text>
+                        <View style={styles.row}>
+                          <Text style={styles.label}>Overtime</Text>
+                          <Text style={styles.value}>
+                            No overtime for fixed salary
+                          </Text>
+                        </View>
+                      </>
+                    ) : (
+                      <>
+                        <View style={styles.row}>
+                          <Text style={styles.label}>Hours</Text>
+                          <Text style={styles.value}>
+                            {item.totalHours.toFixed(2)} (OT{" "}
+                            {item.totalOvertime.toFixed(2)})
+                          </Text>
+                        </View>
+
+                        <View style={styles.row}>
+                          <Text style={styles.label}>Rate</Text>
+                          <Text style={styles.value}>
+                            {item.hourlyRate.toFixed(2)} | OT{" "}
+                            {item.overtimeHourlyRate.toFixed(2)}
+                          </Text>
+                        </View>
+
+                        <View style={styles.row}>
+                          <Text style={styles.label}>Breakdown</Text>
+                          <Text style={styles.value}>
+                            Base {item.basePay.toFixed(2)} | OT{" "}
+                            {item.overtimePay.toFixed(2)}
+                          </Text>
+                        </View>
+                      </>
+                    )}
                   </View>
-                </View>
-              )}
+                );
+              }}
               ListEmptyComponent={
                 <View style={styles.center}>
                   <Text style={styles.emptyText}>

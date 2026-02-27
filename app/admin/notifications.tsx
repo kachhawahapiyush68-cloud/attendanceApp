@@ -18,6 +18,8 @@ import {
   fetchAdminNotifications,
   NotificationItem,
   sendAdminBroadcast,
+  fetchUnreadCount,
+  markNotificationRead,
 } from "../../services/notificationService";
 
 type Audience = "all" | "single" | "multiple";
@@ -25,12 +27,11 @@ type Audience = "all" | "single" | "multiple";
 export default function AdminNotificationsScreen() {
   const [title, setTitle] = useState("");
   const [message, setMessage] = useState("");
-
   const [audience, setAudience] = useState<Audience>("all");
 
   // single employee
   const [searchEmployee, setSearchEmployee] = useState("");
-  const [targetUserId, setTargetUserId] = useState("");
+  const [targetUserCode, setTargetUserCode] = useState(""); // User.user_id (code)
 
   // multiple employees
   const [searchMultiEmployee, setSearchMultiEmployee] = useState("");
@@ -44,6 +45,7 @@ export default function AdminNotificationsScreen() {
 
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [loadingNotifications, setLoadingNotifications] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
 
   // EMPLOYEES
   useEffect(() => {
@@ -62,7 +64,7 @@ export default function AdminNotificationsScreen() {
       if (!q.trim()) return employees;
       const query = q.toLowerCase();
       return employees.filter((e) => {
-        const code = (e.id || "").toLowerCase();
+        const code = (e.user_id || "").toLowerCase(); // employee code
         const name = (e.name || "").toLowerCase();
         return code.includes(query) || name.includes(query);
       });
@@ -97,8 +99,12 @@ export default function AdminNotificationsScreen() {
   const loadNotifications = useCallback(async () => {
     try {
       setLoadingNotifications(true);
-      const data = await fetchAdminNotifications();
+      const [data, count] = await Promise.all([
+        fetchAdminNotifications(),
+        fetchUnreadCount(),
+      ]);
       setNotifications(data);
+      setUnreadCount(count);
     } catch (e: any) {
       console.log("loadNotifications error:", e?.message);
     } finally {
@@ -112,8 +118,7 @@ export default function AdminNotificationsScreen() {
 
   const sortedNotifications = useMemo(() => {
     return [...notifications].sort(
-      (a, b) =>
-        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
     );
   }, [notifications]);
 
@@ -136,7 +141,6 @@ export default function AdminNotificationsScreen() {
           : item.userName || item.userCode || `User #${item.userId}`;
 
       return (
-        (item.title || "").toLowerCase().includes(q) ||
         (item.message || "").toLowerCase().includes(q) ||
         nameLabel.toLowerCase().includes(q) ||
         typeLabel.toLowerCase().includes(q) ||
@@ -155,20 +159,18 @@ export default function AdminNotificationsScreen() {
       return "Message must be at least 5 characters";
 
     if (audience === "single") {
-      if (!targetUserId.trim()) {
-        return "Employee User ID is required for single user notification";
+      if (!targetUserCode.trim()) {
+        return "Employee code is required (User.user_id)";
       }
       const emp = employees.find(
-        (e) => e.id.toLowerCase() === targetUserId.trim().toLowerCase()
+        (e) => (e.user_id || "").toLowerCase() === targetUserCode.trim().toLowerCase()
       );
-      if (!emp) {
-        return "Selected employee not found. Please pick from suggestions.";
-      }
+      if (!emp) return "Selected employee not found. Please pick from suggestions.";
     }
 
     if (audience === "multiple") {
       if (selectedEmployees.length === 0) {
-        return "Please select at least one employee for multiple audience.";
+        return "Please select at least one employee.";
       }
     }
 
@@ -191,25 +193,21 @@ export default function AdminNotificationsScreen() {
             setLoading(true);
 
             if (audience === "all") {
-              await sendAdminBroadcast({
-                title,
-                message,
-                audience: "all",
-              });
+              await sendAdminBroadcast({ title, message, audience: "all" });
             } else if (audience === "single") {
               await sendAdminBroadcast({
                 title,
                 message,
                 audience: "single",
-                userid: targetUserId.trim(), // this is Employee.id
+                userid: targetUserCode.trim(), // employee code
               });
             } else {
-              const ids = selectedEmployees.map((e) => e.id);
+              const codes = selectedEmployees.map((e) => e.user_id); // employee codes
               await sendAdminBroadcast({
                 title,
                 message,
                 audience: "multiple",
-                userids: ids,
+                userids: codes,
               });
             }
 
@@ -218,14 +216,13 @@ export default function AdminNotificationsScreen() {
             setTitle("");
             setMessage("");
             setAudience("all");
-            setTargetUserId("");
+            setTargetUserCode("");
             setSearchEmployee("");
             setSearchMultiEmployee("");
             setSelectedEmployees([]);
 
             await loadNotifications();
           } catch (e: any) {
-            console.log("sendAdminBroadcast error:", e?.response?.data || e);
             const msg =
               e?.response?.data?.message ||
               e?.message ||
@@ -240,6 +237,19 @@ export default function AdminNotificationsScreen() {
   };
 
   const behavior = Platform.OS === "ios" ? "padding" : "height";
+
+  const onPressNotification = async (item: NotificationItem) => {
+    if (item.isRead) return;
+    try {
+      await markNotificationRead(item.id);
+      setNotifications((prev) =>
+        prev.map((n) => (n.id === item.id ? { ...n, isRead: true } : n))
+      );
+      setUnreadCount((c) => Math.max(0, c - 1));
+    } catch {
+      // ignore
+    }
+  };
 
   const renderNotificationRow = (item: NotificationItem) => {
     const created = new Date(item.createdAt);
@@ -261,25 +271,29 @@ export default function AdminNotificationsScreen() {
         ? "Admin Broadcast"
         : "Employee Message";
 
+    const unreadStyle = !item.isRead ? styles.msgCardUnread : null;
+
     return (
-      <View key={item.id} style={styles.msgCard}>
+      <TouchableOpacity
+        key={item.id}
+        style={[styles.msgCard, unreadStyle]}
+        onPress={() => onPressNotification(item)}
+        activeOpacity={0.8}
+      >
         <View style={styles.msgHeaderRow}>
           <View style={{ flex: 1 }}>
             <Text style={styles.msgName}>{nameLabel}</Text>
             <View style={styles.roleRow}>
               <Text style={styles.roleBadge}>{roleLabel}</Text>
               <Text style={styles.msgType}>{typeLabel}</Text>
+              {!item.isRead && <Text style={styles.unreadDot}>UNSEEN</Text>}
             </View>
           </View>
           <Text style={styles.msgMetaSmall}>{dateLabel}</Text>
         </View>
-        {!!item.title && (
-          <Text style={[styles.msgText, { fontWeight: "700" }]}>
-            {item.title}
-          </Text>
-        )}
+
         <Text style={styles.msgText}>{item.message}</Text>
-      </View>
+      </TouchableOpacity>
     );
   };
 
@@ -290,13 +304,11 @@ export default function AdminNotificationsScreen() {
         {selectedEmployees.map((e) => (
           <View key={e.id} style={styles.chip}>
             <Text style={styles.chipText}>
-              {e.id} · {e.name || "No name"}
+              {e.user_id} · {e.name || "No name"}
             </Text>
             <TouchableOpacity
               onPress={() =>
-                setSelectedEmployees((prev) =>
-                  prev.filter((p) => p.id !== e.id)
-                )
+                setSelectedEmployees((prev) => prev.filter((p) => p.id !== e.id))
               }
             >
               <Text style={styles.chipRemove}>×</Text>
@@ -310,11 +322,6 @@ export default function AdminNotificationsScreen() {
   return (
     <SafeAreaView style={styles.safe}>
       <View style={styles.root}>
-        <View style={styles.backgroundLayer}>
-          <View style={[styles.circle, styles.circleTop]} />
-          <View style={[styles.circle, styles.circleBottomLeft]} />
-        </View>
-
         <KeyboardAvoidingView
           style={styles.flex}
           behavior={behavior}
@@ -328,7 +335,7 @@ export default function AdminNotificationsScreen() {
           >
             <Text style={styles.header}>Admin notifications</Text>
             <Text style={styles.subheader}>
-              Send important messages to all employees or specific users.
+              Unseen: {unreadCount}
             </Text>
 
             {/* SEND FORM */}
@@ -413,58 +420,45 @@ export default function AdminNotificationsScreen() {
                   <Text style={styles.label}>Employee (search & tap) *</Text>
                   <TextInput
                     style={styles.input}
-                    placeholder="Search by ID or name..."
+                    placeholder="Search by code or name..."
                     placeholderTextColor="#6b7280"
                     value={searchEmployee}
                     onChangeText={(text) => {
                       setSearchEmployee(text);
-                      setTargetUserId(text);
+                      setTargetUserCode(text);
                     }}
                     autoCapitalize="none"
                     autoCorrect={false}
                     returnKeyType="done"
                   />
 
-                  {filteredEmployeesSingle.length > 0 && searchEmployee.trim() && (
+                  {filteredEmployeesSingle.length > 0 && searchEmployee.trim() ? (
                     <View style={styles.suggestionsContainer}>
                       {filteredEmployeesSingle.slice(0, 5).map((e) => (
                         <TouchableOpacity
                           key={e.id}
                           style={styles.suggestionItem}
                           onPress={() => {
-                            setTargetUserId(e.id);
-                            setSearchEmployee(`${e.id} - ${e.name || ""}`);
+                            setTargetUserCode(e.user_id); // code
+                            setSearchEmployee(`${e.user_id} - ${e.name || ""}`);
                           }}
                         >
                           <Text style={styles.suggestionText}>
-                            {e.id} · {e.name || "No name"}
+                            {e.user_id} · {e.name || "No name"}
                           </Text>
                         </TouchableOpacity>
                       ))}
                     </View>
-                  )}
-
-                  {employees.length > 0 && (
-                    <Text style={styles.hint}>
-                      Example IDs:{" "}
-                      {employees
-                        .slice(0, 3)
-                        .map((e) => e.id)
-                        .join(", ")}
-                      {employees.length > 3 ? "..." : ""}
-                    </Text>
-                  )}
+                  ) : null}
                 </>
               )}
 
               {audience === "multiple" && (
                 <>
-                  <Text style={styles.label}>
-                    Employees (search & select) *
-                  </Text>
+                  <Text style={styles.label}>Employees (search & select) *</Text>
                   <TextInput
                     style={styles.input}
-                    placeholder="Search by ID or name..."
+                    placeholder="Search by code or name..."
                     placeholderTextColor="#6b7280"
                     value={searchMultiEmployee}
                     onChangeText={setSearchMultiEmployee}
@@ -474,32 +468,32 @@ export default function AdminNotificationsScreen() {
                   />
 
                   {filteredEmployeesMulti.length > 0 &&
-                    searchMultiEmployee.trim().length > 0 && (
-                      <View style={styles.suggestionsContainer}>
-                        {filteredEmployeesMulti.slice(0, 10).map((e) => {
-                          const selected = isEmployeeSelected(e);
-                          return (
-                            <TouchableOpacity
-                              key={e.id}
+                  searchMultiEmployee.trim().length > 0 ? (
+                    <View style={styles.suggestionsContainer}>
+                      {filteredEmployeesMulti.slice(0, 10).map((e) => {
+                        const selected = isEmployeeSelected(e);
+                        return (
+                          <TouchableOpacity
+                            key={e.id}
+                            style={[
+                              styles.suggestionItem,
+                              selected && styles.suggestionItemSelected,
+                            ]}
+                            onPress={() => toggleSelectEmployee(e)}
+                          >
+                            <Text
                               style={[
-                                styles.suggestionItem,
-                                selected && styles.suggestionItemSelected,
+                                styles.suggestionText,
+                                selected && styles.suggestionTextSelected,
                               ]}
-                              onPress={() => toggleSelectEmployee(e)}
                             >
-                              <Text
-                                style={[
-                                  styles.suggestionText,
-                                  selected && styles.suggestionTextSelected,
-                                ]}
-                              >
-                                {e.id} · {e.name || "No name"}
-                              </Text>
-                            </TouchableOpacity>
-                          );
-                        })}
-                      </View>
-                    )}
+                              {e.user_id} · {e.name || "No name"}
+                            </Text>
+                          </TouchableOpacity>
+                        );
+                      })}
+                    </View>
+                  ) : null}
 
                   {renderSelectedChips()}
                 </>
@@ -519,11 +513,11 @@ export default function AdminNotificationsScreen() {
             </View>
 
             {/* NOTIFICATIONS LIST + SEARCH */}
-            <Text style={styles.sectionHeader}>Messages / broadcasts</Text>
+            <Text style={styles.sectionHeader}>Inbox</Text>
 
             <TextInput
               style={[styles.input, { marginBottom: 8 }]}
-              placeholder="Search notifications (title, message, user, type...)"
+              placeholder="Search notifications..."
               placeholderTextColor="#6b7280"
               value={searchNotification}
               onChangeText={setSearchNotification}
@@ -532,9 +526,7 @@ export default function AdminNotificationsScreen() {
             {loadingNotifications && notifications.length === 0 ? (
               <View style={styles.centerBox}>
                 <ActivityIndicator size="small" color="#2563eb" />
-                <Text style={styles.loadingText}>
-                  Loading notifications...
-                </Text>
+                <Text style={styles.loadingText}>Loading notifications...</Text>
               </View>
             ) : filteredNotifications.length === 0 ? (
               <Text style={styles.emptyText}>No notifications found.</Text>
@@ -548,65 +540,26 @@ export default function AdminNotificationsScreen() {
   );
 }
 
+// keep your styles; only add unread style
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: "#e5f3ff" },
   root: { flex: 1, backgroundColor: "#e5f3ff" },
-  backgroundLayer: {
-    ...StyleSheet.absoluteFillObject,
-    overflow: "hidden",
-  },
-  circle: {
-    position: "absolute",
-    width: 240,
-    height: 240,
-    borderRadius: 120,
-  },
-  circleTop: {
-    backgroundColor: "rgba(59,130,246,0.18)",
-    top: -80,
-    right: -60,
-  },
-  circleBottomLeft: {
-    backgroundColor: "rgba(16,185,129,0.16)",
-    bottom: -100,
-    left: -70,
-  },
   flex: { flex: 1 },
   container: { flex: 1 },
-  content: {
-    padding: 16,
-    paddingBottom: 32,
-  },
-  header: {
-    fontSize: 22,
-    fontWeight: "800",
-    color: "#0f172a",
-    marginBottom: 4,
-  },
-  subheader: {
-    fontSize: 13,
-    color: "#64748b",
-    marginBottom: 16,
-  },
+  content: { padding: 16, paddingBottom: 32 },
+
+  header: { fontSize: 22, fontWeight: "800", color: "#0f172a", marginBottom: 4 },
+  subheader: { fontSize: 13, color: "#64748b", marginBottom: 16 },
+
   card: {
     backgroundColor: "#ffffff",
     borderRadius: 18,
     padding: 16,
     borderWidth: 1,
     borderColor: "rgba(148,163,184,0.6)",
-    shadowColor: "#0f172a",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.08,
-    shadowRadius: 10,
-    elevation: 3,
   },
-  label: {
-    fontSize: 13,
-    color: "#0f172a",
-    marginTop: 8,
-    marginBottom: 4,
-    fontWeight: "600",
-  },
+
+  label: { fontSize: 13, color: "#0f172a", marginTop: 8, marginBottom: 4, fontWeight: "600" },
   input: {
     borderWidth: 1,
     borderColor: "#cbd5e1",
@@ -617,13 +570,9 @@ const styles = StyleSheet.create({
     fontSize: 14,
     backgroundColor: "#f8fafc",
   },
-  textArea: {
-    minHeight: 90,
-  },
-  audienceRow: {
-    flexDirection: "row",
-    marginTop: 4,
-  },
+  textArea: { minHeight: 90 },
+
+  audienceRow: { flexDirection: "row", marginTop: 4 },
   audienceChip: {
     flex: 1,
     paddingVertical: 8,
@@ -635,23 +584,10 @@ const styles = StyleSheet.create({
     backgroundColor: "#ffffff",
   },
   lastChip: { marginRight: 0 },
-  audienceChipActive: {
-    backgroundColor: "#2563eb",
-    borderColor: "#2563eb",
-  },
-  audienceText: {
-    fontSize: 13,
-    color: "#0f172a",
-    fontWeight: "600",
-  },
-  audienceTextActive: {
-    color: "#ffffff",
-  },
-  hint: {
-    fontSize: 11,
-    color: "#6b7280",
-    marginTop: 4,
-  },
+  audienceChipActive: { backgroundColor: "#2563eb", borderColor: "#2563eb" },
+  audienceText: { fontSize: 13, color: "#0f172a", fontWeight: "600" },
+  audienceTextActive: { color: "#ffffff" },
+
   button: {
     marginTop: 16,
     backgroundColor: "#2563eb",
@@ -659,35 +595,15 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     alignItems: "center",
   },
-  buttonDisabled: {
-    backgroundColor: "#93c5fd",
-  },
-  buttonText: {
-    color: "#ffffff",
-    fontSize: 15,
-    fontWeight: "700",
-  },
-  sectionHeader: {
-    marginTop: 20,
-    marginBottom: 8,
-    fontSize: 16,
-    fontWeight: "700",
-    color: "#0f172a",
-  },
-  centerBox: {
-    marginTop: 16,
-    alignItems: "center",
-  },
-  loadingText: {
-    marginTop: 8,
-    color: "#6b7280",
-    fontSize: 13,
-  },
-  emptyText: {
-    marginTop: 8,
-    color: "#6b7280",
-    fontSize: 13,
-  },
+  buttonDisabled: { backgroundColor: "#93c5fd" },
+  buttonText: { color: "#ffffff", fontSize: 15, fontWeight: "700" },
+
+  sectionHeader: { marginTop: 20, marginBottom: 8, fontSize: 16, fontWeight: "700", color: "#0f172a" },
+
+  centerBox: { marginTop: 16, alignItems: "center" },
+  loadingText: { marginTop: 8, color: "#6b7280", fontSize: 13 },
+  emptyText: { marginTop: 8, color: "#6b7280", fontSize: 13 },
+
   msgCard: {
     backgroundColor: "#ffffff",
     borderRadius: 16,
@@ -696,20 +612,14 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "rgba(148,163,184,0.6)",
   },
-  msgHeaderRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
+  msgCardUnread: {
+    borderColor: "#2563eb",
+    backgroundColor: "#eff6ff",
   },
-  msgName: {
-    fontSize: 14,
-    fontWeight: "700",
-    color: "#0f172a",
-  },
-  roleRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginTop: 2,
-  },
+
+  msgHeaderRow: { flexDirection: "row", justifyContent: "space-between" },
+  msgName: { fontSize: 14, fontWeight: "700", color: "#0f172a" },
+  roleRow: { flexDirection: "row", alignItems: "center", marginTop: 2 },
   roleBadge: {
     fontSize: 11,
     paddingHorizontal: 6,
@@ -726,17 +636,20 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     backgroundColor: "rgba(59,130,246,0.12)",
     color: "#1d4ed8",
+    marginRight: 6,
   },
-  msgMetaSmall: {
-    marginLeft: 8,
+  unreadDot: {
     fontSize: 11,
-    color: "#6b7280",
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 999,
+    backgroundColor: "rgba(239,68,68,0.12)",
+    color: "#b91c1c",
+    fontWeight: "700",
   },
-  msgText: {
-    marginTop: 6,
-    fontSize: 13,
-    color: "#111827",
-  },
+  msgMetaSmall: { marginLeft: 8, fontSize: 11, color: "#6b7280" },
+  msgText: { marginTop: 6, fontSize: 13, color: "#111827" },
+
   suggestionsContainer: {
     marginTop: 4,
     borderWidth: 1,
@@ -751,22 +664,11 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: "#e5e7eb",
   },
-  suggestionItemSelected: {
-    backgroundColor: "#dbeafe",
-  },
-  suggestionText: {
-    fontSize: 13,
-    color: "#0f172a",
-  },
-  suggestionTextSelected: {
-    color: "#1d4ed8",
-    fontWeight: "600",
-  },
-  chipsContainer: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    marginTop: 6,
-  },
+  suggestionItemSelected: { backgroundColor: "#dbeafe" },
+  suggestionText: { fontSize: 13, color: "#0f172a" },
+  suggestionTextSelected: { color: "#1d4ed8", fontWeight: "600" },
+
+  chipsContainer: { flexDirection: "row", flexWrap: "wrap", marginTop: 6 },
   chip: {
     flexDirection: "row",
     alignItems: "center",
@@ -777,14 +679,6 @@ const styles = StyleSheet.create({
     marginRight: 6,
     marginTop: 4,
   },
-  chipText: {
-    fontSize: 11,
-    color: "#0f172a",
-    marginRight: 6,
-  },
-  chipRemove: {
-    fontSize: 14,
-    color: "#ef4444",
-    fontWeight: "700",
-  },
+  chipText: { fontSize: 11, color: "#0f172a", marginRight: 6 },
+  chipRemove: { fontSize: 14, color: "#ef4444", fontWeight: "700" },
 });
