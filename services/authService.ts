@@ -9,6 +9,7 @@ interface LoginResponse {
   user_id?: string;
   email?: string | null;
   name?: string | null;
+  photo?: string | null;
 }
 
 interface RegisterResponse {
@@ -18,11 +19,9 @@ interface RegisterResponse {
   user_id: string;
   email: string;
   mobileNo?: string;
+  photo?: string | null;
 }
 
-/**
- * Common handler for login-like responses that DO return a token.
- */
 async function handleAuthSuccess(
   response: { data: LoginResponse },
   fallbackUserId: string,
@@ -52,10 +51,8 @@ async function handleAuthSuccess(
     safeEmail,
   });
 
-  // set token on axios instance
   setApiToken(token);
 
-  // persist auth in store
   await useAuthStore
     .getState()
     .setAuth(token, role, safeUserId, safeName, safeEmail);
@@ -63,9 +60,6 @@ async function handleAuthSuccess(
   return response.data;
 }
 
-/**
- * LOGIN – expects token from /auth/login
- */
 export async function login(user_id: string, pin: string) {
   try {
     console.log("[authService] login start:", { user_id });
@@ -85,10 +79,7 @@ export async function login(user_id: string, pin: string) {
   }
 }
 
-/**
- * REGISTER ADMIN – /auth/register does NOT return token
- * So DO NOT call handleAuthSuccess here.
- */
+// If you also register admins with selfie, mirror the same pattern.
 export async function registerAdmin(data: {
   user_id: string;
   pin: string;
@@ -96,21 +87,37 @@ export async function registerAdmin(data: {
   name?: string;
   address?: string;
   mobileNo?: string;
-  photo?: string;
+  photoUri: string;
   latitude?: number;
   longitude?: number;
 }) {
   try {
     console.log("[authService] registerAdmin start:", { user_id: data.user_id });
 
-    const payload = { ...data, role: "admin" as const };
+    const form = new FormData();
+    form.append("user_id", data.user_id);
+    form.append("pin", data.pin);
+    form.append("role", "admin");
+    form.append("email", data.email);
+    if (data.name) form.append("name", data.name);
+    if (data.address) form.append("address", data.address);
+    if (data.mobileNo) form.append("mobileNo", data.mobileNo);
+    if (typeof data.latitude === "number")
+      form.append("latitude", String(data.latitude));
+    if (typeof data.longitude === "number")
+      form.append("longitude", String(data.longitude));
+    form.append("photo", {
+      uri: data.photoUri,
+      name: "selfie.jpg",
+      type: "image/jpeg",
+    } as any);
 
-    // Backend returns: { id, role, username, user_id, email, mobileNo }
-    const response = await api.post<RegisterResponse>("/auth/register", payload);
+    const response = await api.post<RegisterResponse>("/auth/register", form, {
+      headers: { "Content-Type": "multipart/form-data" },
+    });
 
     console.log("[authService] registerAdmin response:", response.data);
 
-    // just return created admin data; no token / no login here
     return response.data;
   } catch (error: any) {
     const message =
@@ -122,10 +129,6 @@ export async function registerAdmin(data: {
   }
 }
 
-/**
- * REGISTER EMPLOYEE – /auth/register does NOT return token
- * So DO NOT call handleAuthSuccess here.
- */
 export async function registerEmployee(data: {
   user_id: string;
   pin: string;
@@ -133,7 +136,7 @@ export async function registerEmployee(data: {
   name?: string;
   address?: string;
   mobileNo?: string;
-  photo?: string;
+  photoUri: string;
   latitude?: number;
   longitude?: number;
 }) {
@@ -142,14 +145,30 @@ export async function registerEmployee(data: {
       user_id: data.user_id,
     });
 
-    const payload = { ...data, role: "employee" as const };
+    const form = new FormData();
+    form.append("user_id", data.user_id);
+    form.append("pin", data.pin);
+    form.append("role", "employee");
+    form.append("email", data.email);
+    if (data.name) form.append("name", data.name);
+    if (data.address) form.append("address", data.address);
+    if (data.mobileNo) form.append("mobileNo", data.mobileNo);
+    if (typeof data.latitude === "number")
+      form.append("latitude", String(data.latitude));
+    if (typeof data.longitude === "number")
+      form.append("longitude", String(data.longitude));
+    form.append("photo", {
+      uri: data.photoUri,
+      name: "selfie.jpg",
+      type: "image/jpeg",
+    } as any);
 
-    // Backend returns: { id, role, username, user_id, email, mobileNo }
-    const response = await api.post<RegisterResponse>("/auth/register", payload);
+    const response = await api.post<RegisterResponse>("/auth/register", form, {
+      headers: { "Content-Type": "multipart/form-data" },
+    });
 
     console.log("[authService] registerEmployee response:", response.data);
 
-    // just return created employee data; no token / no login here
     return response.data;
   } catch (error: any) {
     const message =

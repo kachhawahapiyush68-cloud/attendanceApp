@@ -34,7 +34,6 @@ export const useAuthStore = create<AuthState>((set) => ({
   setAuth: async (token, role, userId, userName, email = null) => {
     set({ isLoading: true });
 
-    // FIX: don't force "employee" when role is missing
     const safeRole: Role =
       role === "admin" || role === "employee" ? role : null;
     const safeUserId = userId || "";
@@ -50,7 +49,6 @@ export const useAuthStore = create<AuthState>((set) => ({
       ]);
     } catch (err) {
       console.log("SecureStore setItem error:", err);
-      // do not throw, just log and still set in-memory state
     }
 
     setApiToken(token);

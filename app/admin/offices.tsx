@@ -80,7 +80,10 @@ export default function AdminOfficesScreen() {
       Alert.alert("Validation", "Latitude must be between -90 and 90");
       return;
     }
-    if (newLng && (Number.isNaN(lngNum) || lngNum! < -180 || lngNum! > 180)) {
+    if (
+      newLng &&
+      (Number.isNaN(lngNum) || lngNum! < -180 || lngNum! > 180)
+    ) {
       Alert.alert("Validation", "Longitude must be between -180 and 180");
       return;
     }
@@ -158,7 +161,6 @@ export default function AdminOfficesScreen() {
   return (
     <SafeAreaView style={styles.safe}>
       <View style={styles.root}>
-        {/* light background shapes */}
         <View style={styles.backgroundLayer}>
           <View style={[styles.circle, styles.circleTop]} />
           <View style={[styles.circle, styles.circleBottomLeft]} />
@@ -180,7 +182,6 @@ export default function AdminOfficesScreen() {
               Create offices and configure radius for geofencing.
             </Text>
 
-            {/* Create Office */}
             <View style={styles.card}>
               <Text style={styles.sectionTitle}>Create new office</Text>
 
@@ -243,7 +244,6 @@ export default function AdminOfficesScreen() {
               </TouchableOpacity>
             </View>
 
-            {/* List + edit radius */}
             <View style={styles.card}>
               <Text style={styles.sectionTitle}>Existing offices</Text>
 

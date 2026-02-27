@@ -11,7 +11,7 @@ export interface Office {
 }
 
 export async function fetchOffices(): Promise<Office[]> {
-  const res = await api.get<{ offices?: Office[] }>("/office");
+  const res = await api.get<{ success: boolean; offices?: Office[] }>("/office");
   return (res.data.offices || []) as Office[];
 }
 

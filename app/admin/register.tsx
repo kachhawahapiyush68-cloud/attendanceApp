@@ -26,7 +26,7 @@ export default function RegisterEmployee() {
   const [email, setEmail] = useState("");
   const [address, setAddress] = useState("");
   const [mobileNo, setMobileNo] = useState("");
-  const [photo, setPhoto] = useState<string | null>(null);
+  const [photoUri, setPhotoUri] = useState<string | null>(null);
   const [latitude, setLatitude] = useState<number | null>(null);
   const [longitude, setLongitude] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
@@ -58,11 +58,11 @@ export default function RegisterEmployee() {
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsEditing: true,
       quality: 0.7,
-      base64: true,
+      base64: false,
     });
 
-    if (!result.canceled && result.assets?.[0]?.base64) {
-      setPhoto(result.assets[0].base64);
+    if (!result.canceled && result.assets?.[0]?.uri) {
+      setPhotoUri(result.assets[0].uri);
     }
   };
 
@@ -77,11 +77,11 @@ export default function RegisterEmployee() {
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsEditing: true,
       quality: 0.7,
-      base64: true,
+      base64: false,
     });
 
-    if (!result.canceled && result.assets?.[0]?.base64) {
-      setPhoto(result.assets[0].base64);
+    if (!result.canceled && result.assets?.[0]?.uri) {
+      setPhotoUri(result.assets[0].uri);
     }
   };
 
@@ -115,7 +115,7 @@ export default function RegisterEmployee() {
       return "Invalid email format";
     if (address.trim().length < 5) return "Address min 5 chars";
     if (!/^\d{10}$/.test(mobileNo.trim())) return "10 digit mobile";
-    if (!photo) return "Selfie photo is required";
+    if (!photoUri) return "Selfie photo is required";
     if (latitude == null || longitude == null)
       return "Please capture location (GPS)";
     return null;
@@ -142,7 +142,7 @@ export default function RegisterEmployee() {
               address: address.trim(),
               mobileNo: mobileNo.trim(),
               email: email.trim(),
-              photo: photo || "",
+              photoUri: photoUri || "",
               latitude: latitude ?? undefined,
               longitude: longitude ?? undefined,
             });
@@ -306,15 +306,15 @@ export default function RegisterEmployee() {
 
               {/* Photo (selfie) */}
               <View style={styles.photoSection}>
-                {photo ? (
+                {photoUri ? (
                   <View style={styles.photoPreviewContainer}>
                     <Image
-                      source={{ uri: `data:image/jpeg;base64,${photo}` }}
+                      source={{ uri: photoUri }}
                       style={styles.photoPreview}
                     />
                     <TouchableOpacity
                       style={styles.removeBtn}
-                      onPress={() => setPhoto(null)}
+                      onPress={() => setPhotoUri(null)}
                       disabled={loading}
                     >
                       <Text style={styles.removeText}>✕</Text>
@@ -340,7 +340,7 @@ export default function RegisterEmployee() {
                     </TouchableOpacity>
                   </View>
                 )}
-                {!photo && (
+                {!photoUri && (
                   <Text style={styles.photoHint}>
                     Selfie is required for registration.
                   </Text>
