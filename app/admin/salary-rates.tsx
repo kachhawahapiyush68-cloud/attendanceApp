@@ -100,7 +100,9 @@ export default function AdminSalaryRatesScreen() {
       await updateSalaryRate(item.user_id, {
         salary_type: item.salaryType,
         hourlyRate: item.salaryType === "hourly" ? item.hourlyRate : undefined,
-        overtimeHourlyRate: item.overtimeHourlyRate,
+        // for fixed salary, OT is ignored in backend, keep payload clearer:
+        overtimeHourlyRate:
+          item.salaryType === "hourly" ? item.overtimeHourlyRate : undefined,
         fixed_monthly_salary:
           item.salaryType === "fixed" ? item.fixedMonthlySalary : undefined,
       });
@@ -168,162 +170,164 @@ export default function AdminSalaryRatesScreen() {
             ListEmptyComponent={
               <Text style={styles.emptyText}>No employees found.</Text>
             }
-            renderItem={({ item }) => (
-              <View style={styles.card}>
-                <Text style={styles.name}>
-                  {item.name}{" "}
-                  <Text style={styles.code}>({item.user_id})</Text>
-                </Text>
+            renderItem={({ item }) => {
+              const isFixed = item.salaryType === "fixed";
 
-                {/* Salary type chips */}
-                <View style={styles.typeRow}>
+              return (
+                <View style={styles.card}>
+                  <Text style={styles.name}>
+                    {item.name}{" "}
+                    <Text style={styles.code}>({item.user_id})</Text>
+                  </Text>
+
+                  {/* Salary type chips */}
+                  <View style={styles.typeRow}>
+                    <TouchableOpacity
+                      style={[
+                        styles.typeChip,
+                        item.salaryType === "hourly" && styles.typeChipActive,
+                      ]}
+                      onPress={() =>
+                        handleSalaryTypeChange(item.user_id, "hourly")
+                      }
+                    >
+                      <Text
+                        style={[
+                          styles.typeChipText,
+                          item.salaryType === "hourly" &&
+                            styles.typeChipTextActive,
+                        ]}
+                      >
+                        Hourly
+                      </Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                      style={[
+                        styles.typeChip,
+                        item.salaryType === "fixed" && styles.typeChipActive,
+                      ]}
+                      onPress={() =>
+                        handleSalaryTypeChange(item.user_id, "fixed")
+                      }
+                    >
+                      <Text
+                        style={[
+                          styles.typeChipText,
+                          item.salaryType === "fixed" &&
+                            styles.typeChipTextActive,
+                        ]}
+                      >
+                        Fixed
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+
+                  {item.salaryType === "hourly" ? (
+                    <View style={styles.row}>
+                      <View style={styles.fieldBlock}>
+                        <Text style={styles.label}>Hourly rate</Text>
+                        <TextInput
+                          style={styles.input}
+                          keyboardType="numeric"
+                          value={
+                            Number.isNaN(item.hourlyRate)
+                              ? ""
+                              : String(item.hourlyRate)
+                          }
+                          onChangeText={(text) =>
+                            handleChange(item.user_id, "hourlyRate", text)
+                          }
+                          placeholder="0"
+                          placeholderTextColor="#9ca3af"
+                        />
+                      </View>
+
+                      <View style={styles.fieldBlock}>
+                        <Text style={styles.label}>OT rate</Text>
+                        <TextInput
+                          style={styles.input}
+                          keyboardType="numeric"
+                          value={
+                            Number.isNaN(item.overtimeHourlyRate)
+                              ? ""
+                              : String(item.overtimeHourlyRate)
+                          }
+                          onChangeText={(text) =>
+                            handleChange(
+                              item.user_id,
+                              "overtimeHourlyRate",
+                              text
+                            )
+                          }
+                          placeholder="0"
+                          placeholderTextColor="#9ca3af"
+                        />
+                      </View>
+                    </View>
+                  ) : (
+                    <View style={styles.row}>
+                      <View style={styles.fieldBlock}>
+                        <Text style={styles.label}>Fixed monthly salary</Text>
+                        <TextInput
+                          style={styles.input}
+                          keyboardType="numeric"
+                          value={
+                            Number.isNaN(item.fixedMonthlySalary)
+                              ? ""
+                              : String(item.fixedMonthlySalary)
+                          }
+                          onChangeText={(text) =>
+                            handleChange(
+                              item.user_id,
+                              "fixedMonthlySalary",
+                              text
+                            )
+                          }
+                          placeholder="0"
+                          placeholderTextColor="#9ca3af"
+                        />
+                      </View>
+
+                      <View style={styles.fieldBlock}>
+                        <Text style={styles.label}>OT rate (disabled)</Text>
+                        <TextInput
+                          style={[
+                            styles.input,
+                            styles.disabledInput,
+                          ]}
+                          keyboardType="numeric"
+                          value={
+                            Number.isNaN(item.overtimeHourlyRate)
+                              ? ""
+                              : String(item.overtimeHourlyRate)
+                          }
+                          editable={false}
+                          selectTextOnFocus={false}
+                          placeholder="0"
+                          placeholderTextColor="#9ca3af"
+                        />
+                      </View>
+                    </View>
+                  )}
+
                   <TouchableOpacity
                     style={[
-                      styles.typeChip,
-                      item.salaryType === "hourly" && styles.typeChipActive,
+                      styles.button,
+                      savingUser === item.user_id && styles.buttonDisabled,
                     ]}
-                    onPress={() =>
-                      handleSalaryTypeChange(item.user_id, "hourly")
-                    }
+                    onPress={() => handleSave(item)}
+                    disabled={savingUser === item.user_id}
                   >
-                    <Text
-                      style={[
-                        styles.typeChipText,
-                        item.salaryType === "hourly" &&
-                          styles.typeChipTextActive,
-                      ]}
-                    >
-                      Hourly
-                    </Text>
-                  </TouchableOpacity>
-
-                  <TouchableOpacity
-                    style={[
-                      styles.typeChip,
-                      item.salaryType === "fixed" && styles.typeChipActive,
-                    ]}
-                    onPress={() =>
-                      handleSalaryTypeChange(item.user_id, "fixed")
-                    }
-                  >
-                    <Text
-                      style={[
-                        styles.typeChipText,
-                        item.salaryType === "fixed" &&
-                          styles.typeChipTextActive,
-                      ]}
-                    >
-                      Fixed
-                    </Text>
+                    {savingUser === item.user_id ? (
+                      <ActivityIndicator color="#fff" size="small" />
+                    ) : (
+                      <Text style={styles.buttonText}>Save rates</Text>
+                    )}
                   </TouchableOpacity>
                 </View>
-
-                {item.salaryType === "hourly" ? (
-                  <View style={styles.row}>
-                    <View style={styles.fieldBlock}>
-                      <Text style={styles.label}>Hourly rate</Text>
-                      <TextInput
-                        style={styles.input}
-                        keyboardType="numeric"
-                        value={
-                          Number.isNaN(item.hourlyRate)
-                            ? ""
-                            : String(item.hourlyRate)
-                        }
-                        onChangeText={(text) =>
-                          handleChange(item.user_id, "hourlyRate", text)
-                        }
-                        placeholder="0"
-                        placeholderTextColor="#9ca3af"
-                      />
-                    </View>
-
-                    <View style={styles.fieldBlock}>
-                      <Text style={styles.label}>OT rate</Text>
-                      <TextInput
-                        style={styles.input}
-                        keyboardType="numeric"
-                        value={
-                          Number.isNaN(item.overtimeHourlyRate)
-                            ? ""
-                            : String(item.overtimeHourlyRate)
-                        }
-                        onChangeText={(text) =>
-                          handleChange(
-                            item.user_id,
-                            "overtimeHourlyRate",
-                            text
-                          )
-                        }
-                        placeholder="0"
-                        placeholderTextColor="#9ca3af"
-                      />
-                    </View>
-                  </View>
-                ) : (
-                  <View style={styles.row}>
-                    <View style={styles.fieldBlock}>
-                      <Text style={styles.label}>Fixed monthly salary</Text>
-                      <TextInput
-                        style={styles.input}
-                        keyboardType="numeric"
-                        value={
-                          Number.isNaN(item.fixedMonthlySalary)
-                            ? ""
-                            : String(item.fixedMonthlySalary)
-                        }
-                        onChangeText={(text) =>
-                          handleChange(
-                            item.user_id,
-                            "fixedMonthlySalary",
-                            text
-                          )
-                        }
-                        placeholder="0"
-                        placeholderTextColor="#9ca3af"
-                      />
-                    </View>
-
-                    <View style={styles.fieldBlock}>
-                      <Text style={styles.label}>OT rate (optional)</Text>
-                      <TextInput
-                        style={styles.input}
-                        keyboardType="numeric"
-                        value={
-                          Number.isNaN(item.overtimeHourlyRate)
-                            ? ""
-                            : String(item.overtimeHourlyRate)
-                        }
-                        onChangeText={(text) =>
-                          handleChange(
-                            item.user_id,
-                            "overtimeHourlyRate",
-                            text
-                          )
-                        }
-                        placeholder="0"
-                        placeholderTextColor="#9ca3af"
-                      />
-                    </View>
-                  </View>
-                )}
-
-                <TouchableOpacity
-                  style={[
-                    styles.button,
-                    savingUser === item.user_id && styles.buttonDisabled,
-                  ]}
-                  onPress={() => handleSave(item)}
-                  disabled={savingUser === item.user_id}
-                >
-                  {savingUser === item.user_id ? (
-                    <ActivityIndicator color="#fff" size="small" />
-                  ) : (
-                    <Text style={styles.buttonText}>Save rates</Text>
-                  )}
-                </TouchableOpacity>
-              </View>
-            )}
+              );
+            }}
           />
         </View>
       </View>
@@ -418,6 +422,10 @@ const styles = StyleSheet.create({
     color: "#0f172a",
     backgroundColor: "#f8fafc",
     fontSize: 13,
+  },
+  disabledInput: {
+    backgroundColor: "#e5e7eb",
+    color: "#9ca3af",
   },
   button: {
     marginTop: 10,
