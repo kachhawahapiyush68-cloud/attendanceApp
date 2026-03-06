@@ -1,4 +1,3 @@
-// services/salaryRateService.ts
 import api from "./api";
 
 export type SalaryType = "hourly" | "fixed";
@@ -24,6 +23,9 @@ export async function fetchSalaryRates(): Promise<SalaryRateItem[]> {
     return [];
   }
 
+  const num = (v: any) =>
+    typeof v === "number" ? v : v ? Number(v) : 0;
+
   return res.data.items.map((item: any): SalaryRateItem => ({
     user_id: item.user_id || "",
     name: item.name || "Unknown",
@@ -31,20 +33,11 @@ export async function fetchSalaryRates(): Promise<SalaryRateItem[]> {
       item.salaryType === "fixed" || item.salary_type === "fixed"
         ? "fixed"
         : "hourly",
-    hourlyRate:
-      typeof item.hourlyRate === "number"
-        ? item.hourlyRate
-        : Number(item.hourlyRate || 0),
-    overtimeHourlyRate:
-      typeof item.overtimeHourlyRate === "number"
-        ? item.overtimeHourlyRate
-        : Number(item.overtimeHourlyRate || 0),
-    fixedMonthlySalary:
-      typeof item.fixedMonthlySalary === "number"
-        ? item.fixedMonthlySalary
-        : typeof item.fixed_monthly_salary === "number"
-        ? item.fixed_monthly_salary
-        : Number(item.fixed_monthly_salary || 0),
+    hourlyRate: num(item.hourlyRate),
+    overtimeHourlyRate: num(item.overtimeHourlyRate),
+    fixedMonthlySalary: num(
+      item.fixedMonthlySalary ?? item.fixed_monthly_salary
+    ),
   }));
 }
 

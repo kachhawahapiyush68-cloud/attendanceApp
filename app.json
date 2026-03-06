@@ -15,10 +15,8 @@
     "android": {
       "versionCode": 1,
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/images/logo1.png",
-        "backgroundImage": "./assets/images/logo1.png",
-        "monochromeImage": "./assets/images/logo1.png"
+        "backgroundColor": "#E6F4FE"
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,

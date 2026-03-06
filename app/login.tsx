@@ -61,12 +61,12 @@ export default function LoginScreen() {
             <View style={[styles.circle, styles.circleBottomRight]} />
             <View style={[styles.circle, styles.circleMiddleLeft]} />
             {/* little star dots */}
-            <View style={[styles.star, { top: 50, left: 40 }]} />
+            {/* <View style={[styles.star, { top: 50, left: 40 }]} />
             <View style={[styles.star, { top: 90, right: 60 }]} />
             <View style={[styles.star, { top: 180, left: 120 }]} />
             <View style={[styles.star, { top: 240, right: 40 }]} />
             <View style={[styles.star, { bottom: 140, left: 60 }]} />
-            <View style={[styles.star, { bottom: 90, right: 100 }]} />
+            <View style={[styles.star, { bottom: 90, right: 100 }]} /> */}
           </View>
 
           <ScrollView

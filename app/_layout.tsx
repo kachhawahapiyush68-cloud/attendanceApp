@@ -84,16 +84,17 @@ function LayoutContent() {
             title: makeTitle("Notifications", "Admin Notifications"),
           }}
         />
-        <Stack.Screen
-          name="admin/salary"
-          options={{
-            title: makeTitle("Salary", "Salary Summary"),
-          }}
-        />
+        {/* removed admin/salary */}
         <Stack.Screen
           name="admin/salary-rates"
           options={{
             title: makeTitle("Salary Rates", "Salary Rates"),
+          }}
+        />
+        <Stack.Screen
+          name="admin/employee-salary-detail"
+          options={{
+            title: makeTitle("Employee Salary", "Employee Salary Detail"),
           }}
         />
         <Stack.Screen

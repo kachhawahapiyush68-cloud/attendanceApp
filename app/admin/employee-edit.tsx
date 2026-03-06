@@ -1,5 +1,5 @@
 // app/admin/employee-edit.tsx
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   View,
   Text,
@@ -9,18 +9,24 @@ import {
   Alert,
   ScrollView,
   SafeAreaView,
+  KeyboardAvoidingView,
+  Platform,
 } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { updateEmployee, getEmployeeById } from "../../services/employeeService";
+import {
+  updateEmployee,
+  getEmployeeById,
+  UpdateEmployeePayload,
+} from "../../services/employeeService";
 
 export default function EmployeeEditScreen() {
   const router = useRouter();
   const params = useLocalSearchParams();
 
   const idParam = typeof params.id === "string" ? params.id : "";
-  const nameParam = typeof params.name === "string" ? params.name : "";
   const userIdParam =
     typeof params.user_id === "string" ? params.user_id : "";
+  const nameParam = typeof params.name === "string" ? params.name : "";
 
   const [loading, setLoading] = useState(false);
   const [userId, setUserId] = useState(userIdParam);
@@ -28,33 +34,50 @@ export default function EmployeeEditScreen() {
   const [email, setEmail] = useState("");
   const [mobile, setMobile] = useState("");
   const [address, setAddress] = useState("");
-  const [salaryType, setSalaryType] = useState<"hourly" | "fixed">("hourly");
-  const [fixedSalary, setFixedSalary] = useState("");
-  const [hourlyRate, setHourlyRate] = useState("");
-  const [overtimeRate, setOvertimeRate] = useState("");
+
+  const scrollRef = useRef<ScrollView | null>(null);
+
+  // Normalize Prisma Decimal/number/string to string
+  const toStr = (v: any): string => {
+    if (v == null) return "";
+    if (typeof v === "string") return v;
+    if (typeof v === "number") return v.toString();
+    if (typeof v === "object" && "toString" in v) {
+      return (v as any).toString();
+    }
+    return "";
+  };
 
   useEffect(() => {
     const load = async () => {
       const idNum = Number(idParam);
       if (!idNum) return;
+
       try {
         setLoading(true);
         const emp = await getEmployeeById(idNum);
+
         setUserId(emp.user_id || "");
         setName(emp.name || "");
         setEmail(emp.email || "");
         setMobile(emp.mobile_no || "");
         setAddress(emp.address || "");
-        setSalaryType(emp.salary_type || "hourly");
-        setFixedSalary(emp.fixed_monthly_salary || "");
-        setHourlyRate(emp.hourlyRate || "");
-        setOvertimeRate(emp.overtimeHourlyRate || "");
+
+        // We still read salary fields to avoid breaking things,
+        // but we do not show or update them here anymore.
+        const _fixed = toStr(emp.fixed_monthly_salary);
+        const _hourly = toStr(emp.hourlyRate);
+        const _ot = toStr(emp.overtimeHourlyRate);
+        void _fixed;
+        void _hourly;
+        void _ot;
       } catch (e: any) {
         Alert.alert("Error", e?.message || "Failed to load employee");
       } finally {
         setLoading(false);
       }
     };
+
     load();
   }, [idParam]);
 
@@ -76,17 +99,18 @@ export default function EmployeeEditScreen() {
 
     try {
       setLoading(true);
+
+      // Only update non-salary fields here. Salary is handled in salary-rates screen.
       await updateEmployee(idNum, {
         user_id: userId.trim(),
-        name: name.trim(),
+        name: name.trim() || null,
         email: email.trim(),
-        mobile_no: mobile.trim(),
-        address: address.trim(),
-        salary_type: salaryType,
-        fixed_monthly_salary: fixedSalary || null,
-        hourlyRate: hourlyRate || "0",
-        overtimeHourlyRate: overtimeRate || "0",
-      });
+        mobile_no: mobile.trim() || null,
+        address: address.trim() || null,
+        // salary_type, hourlyRate, fixed_monthly_salary, overtimeHourlyRate
+        // are not touched from this screen anymore
+      } as UpdateEmployeePayload);
+
       Alert.alert("Success", "Employee updated", [
         { text: "OK", onPress: () => router.back() },
       ]);
@@ -97,6 +121,8 @@ export default function EmployeeEditScreen() {
     }
   };
 
+  const behavior = Platform.OS === "ios" ? "padding" : "height";
+
   return (
     <SafeAreaView style={styles.safe}>
       <View style={styles.root}>
@@ -105,141 +131,78 @@ export default function EmployeeEditScreen() {
           <View style={[styles.circle, styles.circleBottomLeft]} />
         </View>
 
-        <ScrollView
-          contentContainerStyle={styles.container}
-          keyboardShouldPersistTaps="handled"
+        <KeyboardAvoidingView
+          style={{ flex: 1 }}
+          behavior={behavior}
+          keyboardVerticalOffset={Platform.OS === "ios" ? 80 : 0}
         >
-          <Text style={styles.title}>Edit employee</Text>
-          <Text style={styles.subtitle}>{userIdParam}</Text>
-
-          <Text style={styles.label}>Employee ID</Text>
-          <TextInput
-            style={styles.input}
-            value={userId}
-            onChangeText={setUserId}
-            placeholder="Employee code"
-            placeholderTextColor="#6b7280"
-          />
-
-          <Text style={styles.label}>Name</Text>
-          <TextInput
-            style={styles.input}
-            value={name}
-            onChangeText={setName}
-            placeholder="Full name"
-            placeholderTextColor="#6b7280"
-          />
-
-          <Text style={styles.label}>Email</Text>
-          <TextInput
-            style={styles.input}
-            value={email}
-            onChangeText={setEmail}
-            placeholder="Email address"
-            placeholderTextColor="#6b7280"
-            keyboardType="email-address"
-            autoCapitalize="none"
-          />
-
-          <Text style={styles.label}>Mobile</Text>
-          <TextInput
-            style={styles.input}
-            value={mobile}
-            onChangeText={setMobile}
-            placeholder="Mobile number"
-            placeholderTextColor="#6b7280"
-            keyboardType="phone-pad"
-          />
-
-          <Text style={styles.label}>Address</Text>
-          <TextInput
-            style={styles.input}
-            value={address}
-            onChangeText={setAddress}
-            placeholder="Address"
-            placeholderTextColor="#6b7280"
-          />
-
-          <Text style={styles.label}>Salary type</Text>
-          <View style={styles.row}>
-            <TouchableOpacity
-              style={[
-                styles.chip,
-                salaryType === "hourly" && styles.chipSelected,
-              ]}
-              onPress={() => setSalaryType("hourly")}
-            >
-              <Text
-                style={[
-                  styles.chipText,
-                  salaryType === "hourly" && styles.chipTextSelected,
-                ]}
-              >
-                Hourly
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[
-                styles.chip,
-                salaryType === "fixed" && styles.chipSelected,
-              ]}
-              onPress={() => setSalaryType("fixed")}
-            >
-              <Text
-                style={[
-                  styles.chipText,
-                  salaryType === "fixed" && styles.chipTextSelected,
-                ]}
-              >
-                Fixed monthly
-              </Text>
-            </TouchableOpacity>
-          </View>
-
-          {salaryType === "fixed" && (
-            <>
-              <Text style={styles.label}>Fixed monthly salary</Text>
-              <TextInput
-                style={styles.input}
-                value={fixedSalary}
-                onChangeText={setFixedSalary}
-                placeholder="e.g. 25000.00"
-                placeholderTextColor="#6b7280"
-                keyboardType="numeric"
-              />
-            </>
-          )}
-
-          <Text style={styles.label}>Hourly rate</Text>
-          <TextInput
-            style={styles.input}
-            value={hourlyRate}
-            onChangeText={setHourlyRate}
-            placeholder="e.g. 100.00"
-            placeholderTextColor="#6b7280"
-            keyboardType="numeric"
-          />
-
-          <Text style={styles.label}>Overtime hourly rate</Text>
-          <TextInput
-            style={styles.input}
-            value={overtimeRate}
-            onChangeText={setOvertimeRate}
-            placeholder="e.g. 150.00"
-            placeholderTextColor="#6b7280"
-            keyboardType="numeric"
-          />
-
-          <TouchableOpacity
-            style={[styles.button, loading && styles.buttonDisabled]}
-            onPress={handleSave}
-            disabled={loading}
+          <ScrollView
+            ref={scrollRef}
+            contentContainerStyle={styles.container}
+            keyboardShouldPersistTaps="handled"
           >
-            <Text style={styles.buttonText}>
-              {loading ? "Saving..." : "Save changes"}
-            </Text>
-          </TouchableOpacity>
-        </ScrollView>
+            <Text style={styles.title}>Edit employee</Text>
+            <Text style={styles.subtitle}>{userIdParam}</Text>
+
+            <Text style={styles.label}>Employee ID</Text>
+            <TextInput
+              style={styles.input}
+              value={userId}
+              onChangeText={setUserId}
+              placeholder="Employee code"
+              placeholderTextColor="#6b7280"
+            />
+
+            <Text style={styles.label}>Name</Text>
+            <TextInput
+              style={styles.input}
+              value={name}
+              onChangeText={setName}
+              placeholder="Full name"
+              placeholderTextColor="#6b7280"
+            />
+
+            <Text style={styles.label}>Email</Text>
+            <TextInput
+              style={styles.input}
+              value={email}
+              onChangeText={setEmail}
+              placeholder="Email address"
+              placeholderTextColor="#6b7280"
+              keyboardType="email-address"
+              autoCapitalize="none"
+            />
+
+            <Text style={styles.label}>Mobile</Text>
+            <TextInput
+              style={styles.input}
+              value={mobile}
+              onChangeText={setMobile}
+              placeholder="Mobile number"
+              placeholderTextColor="#6b7280"
+              keyboardType="phone-pad"
+            />
+
+            <Text style={styles.label}>Address</Text>
+            <TextInput
+              style={styles.input}
+              value={address}
+              onChangeText={setAddress}
+              placeholder="Address"
+              placeholderTextColor="#6b7280"
+            />
+
+            <TouchableOpacity
+              style={[styles.button, loading && styles.buttonDisabled]}
+              onPress={handleSave}
+              disabled={loading}
+            >
+              <Text style={styles.buttonText}>
+                {loading ? "Saving..." : "Save changes"}
+              </Text>
+            </TouchableOpacity>
+          </ScrollView>
+        </KeyboardAvoidingView>
       </View>
     </SafeAreaView>
   );
@@ -291,31 +254,6 @@ const styles = StyleSheet.create({
     backgroundColor: "#f8fafc",
     color: "#0f172a",
     fontSize: 13,
-  },
-  row: {
-    flexDirection: "row",
-    marginTop: 4,
-  },
-  chip: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 999,
-    borderWidth: 1,
-    borderColor: "#cbd5e1",
-    marginRight: 8,
-    backgroundColor: "#ffffff",
-  },
-  chipSelected: {
-    backgroundColor: "#2563eb",
-    borderColor: "#2563eb",
-  },
-  chipText: {
-    fontSize: 12,
-    color: "#0f172a",
-    fontWeight: "600",
-  },
-  chipTextSelected: {
-    color: "#f9fafb",
   },
   button: {
     marginTop: 16,

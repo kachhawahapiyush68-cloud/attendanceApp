@@ -14,14 +14,13 @@ import {
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuthStore, useDisplayName } from "../../Store/authStore";
-import api from "../../services/api"; // make sure this path matches your project
+import api from "../../services/api";
 
 export default function AdminDashboard() {
   const router = useRouter();
   const logout = useAuthStore((state) => state.logout);
   const displayName = useDisplayName();
 
-  // NEW: unread notifications count
   const [unreadCount, setUnreadCount] = useState<number>(0);
   const [loadingUnread, setLoadingUnread] = useState<boolean>(false);
 
@@ -31,7 +30,6 @@ export default function AdminDashboard() {
     offices: useRef(new Animated.Value(1)).current,
     reports: useRef(new Animated.Value(1)).current,
     notifications: useRef(new Animated.Value(1)).current,
-    salary: useRef(new Animated.Value(1)).current,
     salaryRates: useRef(new Animated.Value(1)).current,
     settings: useRef(new Animated.Value(1)).current,
     logout: useRef(new Animated.Value(1)).current,
@@ -61,7 +59,6 @@ export default function AdminDashboard() {
     }
   };
 
-  // NEW: load unread notifications count
   const loadUnreadCount = async () => {
     try {
       setLoadingUnread(true);
@@ -83,11 +80,8 @@ export default function AdminDashboard() {
     loadUnreadCount();
   }, []);
 
-  // Optionally refresh badge when returning from notifications screen
   const goToNotifications = () => {
     router.push("/admin/notifications");
-    // you can also reload after some delay or via focus listener
-    // loadUnreadCount();
   };
 
   return (
@@ -281,7 +275,6 @@ export default function AdminDashboard() {
                     size={26}
                     color="#c2410c"
                   />
-                  {/* NEW: badge over icon */}
                   {!loadingUnread && unreadCount > 0 && (
                     <View style={styles.badge}>
                       <Text style={styles.badgeText}>
@@ -302,36 +295,7 @@ export default function AdminDashboard() {
               </Animated.View>
             </TouchableOpacity>
 
-            {/* Salary summary */}
-            <TouchableOpacity
-              activeOpacity={0.9}
-              onPressIn={() => animatePressIn(cardScale.salary)}
-              onPressOut={() => animatePressOut(cardScale.salary)}
-              onPress={() => router.push("/admin/salary")}
-            >
-              <Animated.View
-                style={[
-                  styles.actionCard,
-                  styles.salaryCard,
-                  { transform: [{ scale: cardScale.salary }] },
-                ]}
-              >
-                <View style={[styles.iconCircle, styles.iconCircleYellow]}>
-                  <Ionicons name="cash-sharp" size={26} color="#854d0e" />
-                </View>
-                <View style={styles.cardText}>
-                  <Text style={styles.cardTitle}>Salary summary</Text>
-                  <Text style={styles.cardSubtitle}>
-                    View salary calculated from attendance and overtime.
-                  </Text>
-                </View>
-                <View style={styles.arrowPill}>
-                  <Ionicons name="arrow-forward" size={18} color="#0f172a" />
-                </View>
-              </Animated.View>
-            </TouchableOpacity>
-
-            {/* Salary rates */}
+            {/* Salary rates ONLY (no salary summary) */}
             <TouchableOpacity
               activeOpacity={0.9}
               onPressIn={() => animatePressIn(cardScale.salaryRates)}
@@ -621,7 +585,6 @@ const styles = StyleSheet.create({
     backgroundColor: "#e5f3ff",
     marginLeft: 8,
   },
-  // NEW: badge styles
   badge: {
     position: "absolute",
     top: -4,

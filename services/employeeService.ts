@@ -1,5 +1,6 @@
-// services/employeeService.ts
 import api from "./api";
+
+export type BackendSalaryType = "HOURLY" | "FIXED";
 
 export interface Employee {
   id: number;
@@ -10,7 +11,19 @@ export interface Employee {
   address: string | null;
   role: "admin" | "employee";
   status: 0 | 1;
-  salary_type: "hourly" | "fixed";
+  salary_type: BackendSalaryType;
+  fixed_monthly_salary: string | null;
+  hourlyRate: string;
+  overtimeHourlyRate: string;
+}
+
+export interface UpdateEmployeePayload {
+  user_id: string;
+  name: string | null;
+  email: string;
+  mobile_no: string | null;
+  address: string | null;
+  salary_type: BackendSalaryType;
   fixed_monthly_salary: string | null;
   hourlyRate: string;
   overtimeHourlyRate: string;
@@ -33,7 +46,7 @@ export async function getEmployeeById(id: number): Promise<Employee> {
 
 export async function updateEmployee(
   id: number,
-  payload: Partial<Employee>
+  payload: UpdateEmployeePayload
 ): Promise<Employee> {
   const res = await api.patch(`/users/${id}`, payload);
   return res.data.user as Employee;
