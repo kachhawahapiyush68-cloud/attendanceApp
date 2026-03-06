@@ -9,7 +9,11 @@ import {
   TouchableOpacity,
   FlatList,
   Alert,
+  Platform,
 } from "react-native";
+import DateTimePicker, {
+  DateTimePickerEvent,
+} from "@react-native-community/datetimepicker";
 import { useLocalSearchParams } from "expo-router";
 import api from "../../services/api";
 
@@ -56,31 +60,56 @@ const formatDate = (isoDate: string): string => {
   return `${d}-${m}-${y}`;
 };
 
+// Date -> "YYYY-MM-DD"
+const fmtYMD = (d: Date) => {
+  const yy = d.getFullYear();
+  const mm = (d.getMonth() + 1).toString().padStart(2, "0");
+  const dd = d.getDate().toString().padStart(2, "0");
+  return `${yy}-${mm}-${dd}`;
+};
+
 export default function EmployeeSalaryDetailScreen() {
   const params = useLocalSearchParams();
   const userIdParam = typeof params.user_id === "string" ? params.user_id : "";
   const nameParam = typeof params.name === "string" ? params.name : "";
 
+  // salary summary still needs month/year
   const [month, setMonth] = useState(current.getMonth() + 1);
   const [year, setYear] = useState(current.getFullYear());
+
+  // date range filters (like reports screen)
+  const [fromDate, setFromDate] = useState<Date>(current);
+  const [toDate, setToDate] = useState<Date>(current);
+  const [pickerMode, setPickerMode] = useState<"from" | "to">("from");
+  const [showPicker, setShowPicker] = useState(false);
+
   const [loading, setLoading] = useState(false);
   const [summary, setSummary] = useState<SalarySummary | null>(null);
   const [rows, setRows] = useState<AttendanceRow[]>([]);
 
-  const changeMonth = (delta: number) => {
-    setMonth((prev) => {
-      let m = prev + delta;
-      let y = year;
-      if (m < 1) {
-        m = 12;
-        y = y - 1;
-      } else if (m > 12) {
-        m = 1;
-        y = y + 1;
-      }
-      setYear(y);
-      return m;
-    });
+  const openPicker = (mode: "from" | "to") => {
+    setPickerMode(mode);
+    setShowPicker(true);
+  };
+
+  const onChangeDate = (event: DateTimePickerEvent, date?: Date) => {
+    if (Platform.OS === "android") {
+      setShowPicker(false);
+    }
+    if (event.type === "dismissed" || !date) return;
+
+    if (pickerMode === "from") {
+      setFromDate(date);
+    } else {
+      setToDate(date);
+    }
+
+    // keep month/year in sync with "from" date so salary APIs still work
+    const base = pickerMode === "from" ? date : fromDate;
+    const m = base.getMonth() + 1;
+    const y = base.getFullYear();
+    setMonth(m);
+    setYear(y);
   };
 
   const loadData = async () => {
@@ -89,15 +118,31 @@ export default function EmployeeSalaryDetailScreen() {
       setLoading(true);
       const res = await api.get<EmployeeSalaryDetailResponse>(
         `/salary/${encodeURIComponent(userIdParam)}`,
-        { params: { month, year } }
+        {
+          params: {
+            month,
+            year,
+            // backend salaryDetail.ts uses only month/year for now,
+            // but you can later extend it with fromDate/toDate if needed.
+          },
+        }
       );
 
       if (!res.data?.success) {
         throw new Error("Failed to load salary detail");
       }
 
+      // Optionally, filter rows on frontend by from/to if month has more days
+      const fromStr = fmtYMD(fromDate);
+      const toStr = fmtYMD(toDate);
+
+      const allRows = res.data.attendance || [];
+      const filteredRows = allRows.filter((r) => {
+        return r.date >= fromStr && r.date <= toStr;
+      });
+
       setSummary(res.data.summary);
-      setRows(res.data.attendance || []);
+      setRows(filteredRows);
     } catch (e: any) {
       Alert.alert("Error", e?.message || "Failed to load salary detail");
     } finally {
@@ -108,7 +153,7 @@ export default function EmployeeSalaryDetailScreen() {
   useEffect(() => {
     loadData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [userIdParam, month, year]);
+  }, [userIdParam, month, year, fromDate, toDate]);
 
   const totals = useMemo(() => {
     const totalDays = rows.length;
@@ -121,6 +166,8 @@ export default function EmployeeSalaryDetailScreen() {
   const keyExtractor = (item: AttendanceRow, index: number) =>
     `${item.date}-${index}`;
 
+  const behavior = Platform.OS === "ios" ? "padding" : "height";
+
   return (
     <SafeAreaView style={styles.safe}>
       <View style={styles.root}>
@@ -130,29 +177,50 @@ export default function EmployeeSalaryDetailScreen() {
         </View>
 
         <View style={styles.container}>
-          {/* Header month / reload */}
-          <View style={styles.headerRow}>
-            <TouchableOpacity onPress={() => changeMonth(-1)}>
-              <Text style={styles.navBtn}>{"<"}</Text>
-            </TouchableOpacity>
-
-            <Text style={styles.monthText}>
-              {month.toString().padStart(2, "0")}/{year}
-            </Text>
-
-            <TouchableOpacity onPress={() => changeMonth(1)}>
-              <Text style={styles.navBtn}>{">"}</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity style={styles.reloadBtn} onPress={loadData}>
-              <Text style={styles.reloadText}>Reload</Text>
-            </TouchableOpacity>
-          </View>
-
           {/* Title */}
           <Text style={styles.title}>
             {nameParam} ({userIdParam})
           </Text>
+
+          {/* Filters like reports screen */}
+          <View style={styles.filterCard}>
+            <Text style={styles.filterLabel}>Filters</Text>
+
+            <View style={styles.dateRow}>
+              <View style={styles.dateColumn}>
+                <Text style={styles.labelSmall}>From</Text>
+                <TouchableOpacity
+                  style={styles.dateButton}
+                  onPress={() => openPicker("from")}
+                >
+                  <Text style={styles.dateButtonText}>
+                    {fromDate.toLocaleDateString()}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+              <View style={styles.dateColumn}>
+                <Text style={styles.labelSmall}>To</Text>
+                <TouchableOpacity
+                  style={styles.dateButton}
+                  onPress={() => openPicker("to")}
+                >
+                  <Text style={styles.dateButtonText}>
+                    {toDate.toLocaleDateString()}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            <TouchableOpacity
+              style={[styles.button, loading && styles.buttonDisabled]}
+              onPress={loadData}
+              disabled={loading}
+            >
+              <Text style={styles.buttonText}>
+                {loading ? "Loading..." : "Apply filters"}
+              </Text>
+            </TouchableOpacity>
+          </View>
 
           {/* Summary card */}
           {summary && (
@@ -226,7 +294,7 @@ export default function EmployeeSalaryDetailScreen() {
                 ListEmptyComponent={
                   <View style={styles.center}>
                     <Text style={styles.emptyText}>
-                      No attendance records for this month.
+                      No attendance records for this period.
                     </Text>
                   </View>
                 }
@@ -242,6 +310,15 @@ export default function EmployeeSalaryDetailScreen() {
             </>
           )}
         </View>
+
+        {showPicker && (
+          <DateTimePicker
+            value={pickerMode === "from" ? fromDate : toDate}
+            mode="date"
+            display={Platform.OS === "ios" ? "spinner" : "default"}
+            onChange={onChangeDate}
+          />
+        )}
       </View>
     </SafeAreaView>
   );
@@ -266,37 +343,52 @@ const styles = StyleSheet.create({
     left: -60,
   },
   container: { flex: 1, padding: 16 },
-  headerRow: {
-    flexDirection: "row",
-    alignItems: "center",
+  title: {
+    fontSize: 18,
+    fontWeight: "800",
+    color: "#0f172a",
     marginBottom: 8,
   },
-  navBtn: {
-    fontSize: 20,
-    fontWeight: "700",
-    paddingHorizontal: 8,
-    color: "#0f172a",
+  filterCard: {
+    backgroundColor: "#ffffff",
+    borderRadius: 20,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: "rgba(148,163,184,0.6)",
+    marginBottom: 10,
+    shadowColor: "#0f172a",
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 1,
   },
-  monthText: {
-    flex: 1,
-    textAlign: "center",
-    fontSize: 16,
+  filterLabel: {
+    fontSize: 14,
     fontWeight: "700",
     color: "#0f172a",
+    marginBottom: 6,
   },
-  reloadBtn: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
+  labelSmall: { fontSize: 12, color: "#6b7280", marginBottom: 4 },
+  dateRow: { flexDirection: "row", justifyContent: "space-between" },
+  dateColumn: { flex: 1, marginRight: 8 },
+  dateButton: {
+    borderWidth: 1,
+    borderColor: "#cbd5e1",
+    borderRadius: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 10,
+    backgroundColor: "#f8fafc",
+  },
+  dateButtonText: { color: "#0f172a", fontSize: 13 },
+  button: {
+    marginTop: 10,
     backgroundColor: "#2563eb",
     borderRadius: 999,
+    paddingVertical: 11,
+    alignItems: "center",
   },
-  reloadText: { color: "white", fontWeight: "600", fontSize: 13 },
-  title: {
-    fontSize: 16,
-    fontWeight: "700",
-    color: "#0f172a",
-    marginBottom: 8,
-  },
+  buttonDisabled: { opacity: 0.7 },
+  buttonText: { color: "#f9fafb", fontWeight: "700", fontSize: 14 },
   summaryCard: {
     backgroundColor: "#ffffff",
     borderRadius: 14,

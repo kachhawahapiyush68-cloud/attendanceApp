@@ -34,11 +34,20 @@ export default function EmployeeHistoryScreen() {
 
   const behavior = Platform.OS === "ios" ? "padding" : "height";
 
+  // Date -> "YYYY-MM-DD"
   const fmt = (d: Date) => {
     const yy = d.getFullYear();
     const mm = (d.getMonth() + 1).toString().padStart(2, "0");
     const dd = d.getDate().toString().padStart(2, "0");
     return `${yy}-${mm}-${dd}`;
+  };
+
+  // "2026-03-06" -> "06-03-2026"
+  const formatDate = (isoDate: string): string => {
+    if (!isoDate) return "";
+    const [y, m, d] = isoDate.split("-");
+    if (!y || !m || !d) return isoDate;
+    return `${d}-${m}-${y}`;
   };
 
   const loadReport = async () => {
@@ -214,7 +223,9 @@ export default function EmployeeHistoryScreen() {
               renderItem={({ item }) => (
                 <View style={styles.card}>
                   <View style={styles.cardHeader}>
-                    <Text style={styles.date}>{item.date}</Text>
+                    <Text style={styles.date}>
+                      {formatDate(item.date)}
+                    </Text>
                     {renderStatus(item.status)}
                   </View>
                   <Text style={styles.meta}>
