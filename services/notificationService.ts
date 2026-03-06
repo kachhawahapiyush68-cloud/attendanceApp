@@ -13,14 +13,15 @@ export interface NotificationItem {
   userId: number | null;
   type: NotificationType;
   message: string;
-  createdAt: string;
+  createdAt: string;            // raw DB value
+  createdAtIST?: string | null; // "YYYY-MM-DD HH:mm" from backend
   isRead: boolean;
   targetRole: NotificationTargetRole;
   userName?: string | null;
   userCode?: string | null;
   senderRole: "admin" | "employee";
   edited?: boolean;
-  image_url?: string | null; // optional if you want to show selfie later
+  image_url?: string | null;
   location_address?: string | null;
 }
 
@@ -54,7 +55,9 @@ export async function sendAdminBroadcast(params: {
     audience: params.audience,
   };
 
-  if (params.audience === "single") payload.userid = String(params.userid || "").trim();
+  if (params.audience === "single") {
+    payload.userid = String(params.userid || "").trim();
+  }
   if (params.audience === "multiple") {
     payload.userids = Array.isArray(params.userids)
       ? params.userids.map((u) => String(u).trim()).filter(Boolean)
@@ -71,6 +74,7 @@ function mapItem(n: any): NotificationItem {
     type: n.type as NotificationType,
     message: String(n.message || ""),
     createdAt: String(n.createdAt),
+    createdAtIST: n.createdAtIST ? String(n.createdAtIST) : undefined,
     isRead: !!n.isRead,
     targetRole: n.targetRole as NotificationTargetRole,
     userName: n.userName ?? null,

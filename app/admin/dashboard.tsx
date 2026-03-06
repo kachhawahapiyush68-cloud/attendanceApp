@@ -325,7 +325,7 @@ export default function AdminDashboard() {
             </TouchableOpacity>
 
             {/* Settings */}
-            <TouchableOpacity
+            {/* <TouchableOpacity
               activeOpacity={0.9}
               onPressIn={() => animatePressIn(cardScale.settings)}
               onPressOut={() => animatePressOut(cardScale.settings)}
@@ -351,7 +351,7 @@ export default function AdminDashboard() {
                   <Ionicons name="arrow-forward" size={18} color="#0f172a" />
                 </View>
               </Animated.View>
-            </TouchableOpacity>
+            </TouchableOpacity> */}
 
             {/* Logout */}
             <TouchableOpacity

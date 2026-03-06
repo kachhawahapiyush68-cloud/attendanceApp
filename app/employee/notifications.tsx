@@ -54,7 +54,7 @@ export default function EmployeeNotificationsScreen() {
     loadConversation();
   }, [loadConversation]);
 
-  // Optional: mark visible incoming messages as read when screen opens
+  // mark incoming admin messages as read once loaded
   const markAllVisibleAsRead = useCallback(async () => {
     try {
       const unreadIncoming = notifications.filter(
@@ -139,16 +139,24 @@ export default function EmployeeNotificationsScreen() {
     ]);
   };
 
-  const headerLabel = useMemo(() => {
-    return unreadCount > 0 ? `Unseen: ${unreadCount}` : "All seen";
-  }, [unreadCount]);
+  const headerLabel = useMemo(
+    () => (unreadCount > 0 ? `Unseen: ${unreadCount}` : "All seen"),
+    [unreadCount]
+  );
 
   const renderItem = ({ item }: { item: NotificationItem }) => {
-    const created = new Date(item.createdAt);
-    const timeLabel = created.toLocaleTimeString([], {
-      hour: "2-digit",
-      minute: "2-digit",
-    });
+    // Prefer IST time from backend
+    let timeLabel: string;
+    if (item.createdAtIST) {
+      const parts = item.createdAtIST.split(" ");
+      timeLabel = parts[1] || item.createdAtIST; // "HH:mm"
+    } else {
+      const created = new Date(item.createdAt);
+      timeLabel = created.toLocaleTimeString([], {
+        hour: "2-digit",
+        minute: "2-digit",
+      });
+    }
 
     const isEmployee = item.senderRole === "employee";
     const isAdmin = item.senderRole === "admin";

@@ -31,7 +31,7 @@ export default function AdminNotificationsScreen() {
 
   // single employee
   const [searchEmployee, setSearchEmployee] = useState("");
-  const [targetUserCode, setTargetUserCode] = useState(""); // User.user_id (code)
+  const [targetUserCode, setTargetUserCode] = useState("");
 
   // multiple employees
   const [searchMultiEmployee, setSearchMultiEmployee] = useState("");
@@ -64,7 +64,7 @@ export default function AdminNotificationsScreen() {
       if (!q.trim()) return employees;
       const query = q.toLowerCase();
       return employees.filter((e) => {
-        const code = (e.user_id || "").toLowerCase(); // employee code
+        const code = (e.user_id || "").toLowerCase();
         const name = (e.name || "").toLowerCase();
         return code.includes(query) || name.includes(query);
       });
@@ -116,10 +116,13 @@ export default function AdminNotificationsScreen() {
     loadNotifications();
   }, [loadNotifications]);
 
+  // sort using IST timestamp when available
   const sortedNotifications = useMemo(() => {
-    return [...notifications].sort(
-      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-    );
+    return [...notifications].sort((a, b) => {
+      const aKey = a.createdAtIST || a.createdAt;
+      const bKey = b.createdAtIST || b.createdAt;
+      return new Date(bKey).getTime() - new Date(aKey).getTime();
+    });
   }, [notifications]);
 
   const filteredNotifications = useMemo(() => {
@@ -127,7 +130,7 @@ export default function AdminNotificationsScreen() {
     const q = searchNotification.toLowerCase();
 
     return sortedNotifications.filter((item) => {
-      const created = new Date(item.createdAt);
+      const createdStr = (item.createdAtIST || item.createdAt).toLowerCase();
       const typeLabel =
         item.type === "HOME_ATTENDANCE"
           ? "Home Attendance"
@@ -144,10 +147,7 @@ export default function AdminNotificationsScreen() {
         (item.message || "").toLowerCase().includes(q) ||
         nameLabel.toLowerCase().includes(q) ||
         typeLabel.toLowerCase().includes(q) ||
-        created
-          .toLocaleString("en-IN", { timeZone: "Asia/Kolkata" })
-          .toLowerCase()
-          .includes(q)
+        createdStr.includes(q)
       );
     });
   }, [sortedNotifications, searchNotification]);
@@ -163,9 +163,11 @@ export default function AdminNotificationsScreen() {
         return "Employee code is required (User.user_id)";
       }
       const emp = employees.find(
-        (e) => (e.user_id || "").toLowerCase() === targetUserCode.trim().toLowerCase()
+        (e) =>
+          (e.user_id || "").toLowerCase() === targetUserCode.trim().toLowerCase()
       );
-      if (!emp) return "Selected employee not found. Please pick from suggestions.";
+      if (!emp)
+        return "Selected employee not found. Please pick from suggestions.";
     }
 
     if (audience === "multiple") {
@@ -199,10 +201,10 @@ export default function AdminNotificationsScreen() {
                 title,
                 message,
                 audience: "single",
-                userid: targetUserCode.trim(), // employee code
+                userid: targetUserCode.trim(),
               });
             } else {
-              const codes = selectedEmployees.map((e) => e.user_id); // employee codes
+              const codes = selectedEmployees.map((e) => e.user_id);
               await sendAdminBroadcast({
                 title,
                 message,
@@ -252,10 +254,7 @@ export default function AdminNotificationsScreen() {
   };
 
   const renderNotificationRow = (item: NotificationItem) => {
-    const created = new Date(item.createdAt);
-    const dateLabel = created.toLocaleString("en-IN", {
-      timeZone: "Asia/Kolkata",
-    });
+    const dateLabel = item.createdAtIST || item.createdAt;
 
     const nameLabel =
       item.userName && item.userCode
@@ -334,9 +333,7 @@ export default function AdminNotificationsScreen() {
             showsVerticalScrollIndicator={false}
           >
             <Text style={styles.header}>Admin notifications</Text>
-            <Text style={styles.subheader}>
-              Unseen: {unreadCount}
-            </Text>
+            <Text style={styles.subheader}>Unseen: {unreadCount}</Text>
 
             {/* SEND FORM */}
             <View style={styles.card}>
@@ -432,15 +429,18 @@ export default function AdminNotificationsScreen() {
                     returnKeyType="done"
                   />
 
-                  {filteredEmployeesSingle.length > 0 && searchEmployee.trim() ? (
+                  {filteredEmployeesSingle.length > 0 &&
+                  searchEmployee.trim() ? (
                     <View style={styles.suggestionsContainer}>
                       {filteredEmployeesSingle.slice(0, 5).map((e) => (
                         <TouchableOpacity
                           key={e.id}
                           style={styles.suggestionItem}
                           onPress={() => {
-                            setTargetUserCode(e.user_id); // code
-                            setSearchEmployee(`${e.user_id} - ${e.name || ""}`);
+                            setTargetUserCode(e.user_id);
+                            setSearchEmployee(
+                              `${e.user_id} - ${e.name || ""}`
+                            );
                           }}
                         >
                           <Text style={styles.suggestionText}>
@@ -540,7 +540,7 @@ export default function AdminNotificationsScreen() {
   );
 }
 
-// keep your styles; only add unread style
+// styles unchanged from your version
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: "#e5f3ff" },
   root: { flex: 1, backgroundColor: "#e5f3ff" },
@@ -559,7 +559,13 @@ const styles = StyleSheet.create({
     borderColor: "rgba(148,163,184,0.6)",
   },
 
-  label: { fontSize: 13, color: "#0f172a", marginTop: 8, marginBottom: 4, fontWeight: "600" },
+  label: {
+    fontSize: 13,
+    color: "#0f172a",
+    marginTop: 8,
+    marginBottom: 4,
+    fontWeight: "600",
+  },
   input: {
     borderWidth: 1,
     borderColor: "#cbd5e1",
@@ -598,7 +604,13 @@ const styles = StyleSheet.create({
   buttonDisabled: { backgroundColor: "#93c5fd" },
   buttonText: { color: "#ffffff", fontSize: 15, fontWeight: "700" },
 
-  sectionHeader: { marginTop: 20, marginBottom: 8, fontSize: 16, fontWeight: "700", color: "#0f172a" },
+  sectionHeader: {
+    marginTop: 20,
+    marginBottom: 8,
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#0f172a",
+  },
 
   centerBox: { marginTop: 16, alignItems: "center" },
   loadingText: { marginTop: 8, color: "#6b7280", fontSize: 13 },
