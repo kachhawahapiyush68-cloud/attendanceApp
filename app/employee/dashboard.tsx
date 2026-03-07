@@ -10,6 +10,7 @@ import {
   SafeAreaView,
 } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAuthStore, useDisplayName } from "../../Store/authStore";
 import { fetchUnreadCount } from "../../services/notificationService";
 
@@ -17,6 +18,7 @@ const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 
 export default function EmployeeDashboard() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const logout = useAuthStore((state) => state.logout);
   const displayName = useDisplayName();
   const { error } = useLocalSearchParams();
@@ -33,16 +35,12 @@ export default function EmployeeDashboard() {
       const count = await fetchUnreadCount();
       setUnreadCount(count);
     } catch (e) {
-      // silently ignore
       console.log("fetchUnreadCount error:", e);
     }
   }, []);
 
   useEffect(() => {
     loadUnread();
-
-    // optional: refresh when screen gains focus if you use expo-router events
-    // return router.addListener("focus", loadUnread);
   }, [loadUnread]);
 
   const hasUnread = unreadCount > 0;
@@ -51,19 +49,24 @@ export default function EmployeeDashboard() {
   return (
     <SafeAreaView style={styles.safe}>
       <View style={styles.root}>
-        {/* soft background shapes */}
+        {/* background shapes */}
         <View style={styles.backgroundLayer}>
           <View style={[styles.circle, styles.circleTop]} />
           <View style={[styles.circle, styles.circleBottomLeft]} />
           <View style={[styles.circle, styles.circleBottomRight]} />
         </View>
 
+        {/* content */}
         <ScrollView
           style={styles.scrollContainer}
-          contentContainerStyle={styles.scrollContent}
+          contentContainerStyle={[
+            styles.scrollContent,
+            { paddingBottom: (insets.bottom || 16) + 100 },
+          ]}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
+          {/* Header */}
           <View style={styles.header}>
             <Text style={styles.greeting}>Hi, {displayName}</Text>
             <Text style={styles.title}>Employee dashboard</Text>
@@ -78,8 +81,8 @@ export default function EmployeeDashboard() {
             </View>
           )}
 
+          {/* Cards */}
           <View style={styles.cardsContainer}>
-            {/* Mark Attendance */}
             <TouchableOpacity
               style={[styles.card, styles.attendanceCard]}
               onPress={() => router.push("/employee/attendance")}
@@ -97,7 +100,6 @@ export default function EmployeeDashboard() {
               <Text style={styles.arrow}>›</Text>
             </TouchableOpacity>
 
-            {/* My History */}
             <TouchableOpacity
               style={[styles.card, styles.historyCard]}
               onPress={() => router.push("/employee/history")}
@@ -115,7 +117,6 @@ export default function EmployeeDashboard() {
               <Text style={styles.arrow}>›</Text>
             </TouchableOpacity>
 
-            {/* Notifications */}
             <TouchableOpacity
               style={[styles.card, styles.notificationsCard]}
               onPress={() => router.push("/employee/notifications")}
@@ -143,8 +144,18 @@ export default function EmployeeDashboard() {
           </View>
         </ScrollView>
 
-        <View style={styles.footer}>
-          <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
+        {/* floating logout pill */}
+        <View
+          style={[
+            styles.logoutContainer,
+            { paddingBottom: Math.max(insets.bottom, 12) },
+          ]}
+        >
+          <TouchableOpacity
+            style={styles.logoutButton}
+            onPress={handleLogout}
+            activeOpacity={0.9}
+          >
             <Text style={styles.logoutText}>Logout</Text>
           </TouchableOpacity>
         </View>
@@ -188,7 +199,7 @@ const styles = StyleSheet.create({
     right: -40,
   },
   scrollContainer: { flex: 1 },
-  scrollContent: { paddingBottom: 90, paddingTop: 24 },
+  scrollContent: { paddingTop: 24 },
   header: {
     backgroundColor: "#ffffff",
     minHeight: Math.min(140, SCREEN_HEIGHT * 0.18),
@@ -240,7 +251,7 @@ const styles = StyleSheet.create({
   },
   cardsContainer: {
     paddingHorizontal: 20,
-    paddingBottom: 20,
+    paddingBottom: 16,
   },
   card: {
     backgroundColor: "#ffffff",
@@ -330,27 +341,29 @@ const styles = StyleSheet.create({
     fontWeight: "300",
     marginLeft: 8,
   },
-  footer: {
+  logoutContainer: {
     position: "absolute",
-    bottom: 18,
-    left: 24,
-    right: 24,
+    left: 0,
+    right: 0,
+    bottom: 10,
+    alignItems: "center",
+    paddingHorizontal: 16,
   },
   logoutButton: {
+    width: "90%",
     backgroundColor: "#ef4444",
-    paddingVertical: Math.min(14, SCREEN_HEIGHT * 0.022),
-    paddingHorizontal: Math.min(40, SCREEN_WIDTH * 0.1),
-    borderRadius: Math.min(24, SCREEN_WIDTH * 0.07),
+    paddingVertical: 12,
+    borderRadius: 999,
     alignItems: "center",
     shadowColor: "#b91c1c",
-    shadowOffset: { width: 0, height: 4 },
+    shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.25,
-    shadowRadius: 8,
-    elevation: 4,
+    shadowRadius: 6,
+    elevation: 6,
   },
   logoutText: {
     color: "white",
-    fontSize: Math.min(16, SCREEN_WIDTH * 0.042),
+    fontSize: 15,
     fontWeight: "700",
     letterSpacing: 0.4,
   },

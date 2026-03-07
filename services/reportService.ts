@@ -21,19 +21,11 @@ interface ReportResponse {
   records?: any[];
 }
 
-// Build BASE_URL same way as attendanceService
 let rawBase =
   process.env.EXPO_PUBLIC_API_URL || "https://attendance.edgesoftwares.in";
 if (rawBase.endsWith("/")) rawBase = rawBase.slice(0, -1);
 const BASE_URL = rawBase;
 
-/**
- * Fetch attendance report.
- *
- * month, year: required
- * employeeId: optional (used by admin; ignored for employee – backend uses token)
- * fromDate, toDate: optional "YYYY-MM-DD" strings for date range filter
- */
 export async function fetchReport(
   month: number,
   year: number,
@@ -110,8 +102,8 @@ export async function fetchReport(
         status: statusStr,
         selfie: selfieUrl,
         location: rec.location || "Not tracked",
-        in: rec.in || null, // already IST HH:mm from backend
-        out: rec.out || null, // already IST HH:mm
+        in: rec.in || null,
+        out: rec.out || null,
         workType: rec.workType,
         hoursWorked,
         overtimeHours,

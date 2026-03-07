@@ -14,6 +14,8 @@ import {
   ScrollView,
   TextInput,
   SafeAreaView,
+  KeyboardAvoidingView,
+  Platform,
 } from "react-native";
 import { useRouter } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
@@ -28,7 +30,7 @@ import {
   ModeType,
 } from "../../services/attendanceService";
 
-const { height } = Dimensions.get("window");
+const { height: winHeight } = Dimensions.get("window");
 
 // Convert UTC string from backend to IST HH:mm format for display
 function utcStringToISTTime(utcString: string): string {
@@ -90,6 +92,7 @@ export default function Attendance() {
     init();
   }, []);
 
+  // ALWAYS open front (selfie) camera
   const takeSelfie = async () => {
     try {
       const { status } = await ImagePicker.requestCameraPermissionsAsync();
@@ -106,6 +109,7 @@ export default function Attendance() {
         aspect: [1, 1],
         quality: 0.9,
         base64: true,
+        cameraType: ImagePicker.CameraType.front, // force selfie camera
       });
 
       if (!result.canceled && result.assets?.length > 0) {
@@ -171,7 +175,7 @@ export default function Attendance() {
       const deviceId =
         Device.osInternalBuildId ?? Device.deviceName ?? "unknown";
 
-      const officeId = 1; // TODO: replace with real officeId from user/selection
+      const officeId = 1; // TODO: dynamic officeId
 
       const res = await markAttendanceRequest(
         officeId,
@@ -198,7 +202,6 @@ export default function Attendance() {
           ? "Pending approval"
           : "Approved (auto)";
 
-      // Decide which time to show (IN or OUT), convert to IST
       let timeLabel = "";
       if (mode === "in" && res?.record?.in_time) {
         timeLabel = utcStringToISTTime(res.record.in_time);
@@ -220,7 +223,7 @@ export default function Attendance() {
           },
         ]
       );
-      
+
       setMode((prev) => (prev === "in" ? "out" : "in"));
       if (mode === "out") {
         setTask("");
@@ -233,7 +236,15 @@ export default function Attendance() {
   };
 
   const renderFloatingActionButton = () => (
-    <Animated.View style={[styles.fab, { transform: [{ scale: scaleValue }] }]}>
+    <Animated.View
+      style={[
+        styles.fab,
+        {
+          transform: [{ scale: scaleValue }],
+          bottom: 24,
+        },
+      ]}
+    >
       <TouchableOpacity
         style={styles.fabInner}
         onPress={takeSelfie}
@@ -246,7 +257,11 @@ export default function Attendance() {
 
   return (
     <SafeAreaView style={styles.safe}>
-      <View style={styles.root}>
+      <KeyboardAvoidingView
+        style={styles.root}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 20}
+      >
         <View style={styles.backgroundLayer}>
           <View style={[styles.circle, styles.circleTop]} />
           <View style={[styles.circle, styles.circleBottomLeft]} />
@@ -258,6 +273,7 @@ export default function Attendance() {
           style={{ flex: 1 }}
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
         >
           <View style={styles.container}>
             <View style={styles.header}>
@@ -305,10 +321,12 @@ export default function Attendance() {
                 <TextInput
                   style={styles.taskInput}
                   placeholder="Describe your work before OUT"
-                  placeholderTextColor="#6b7280"
+                  placeholderTextColor="#9ca3af"
                   value={task}
                   onChangeText={setTask}
                   multiline
+                  textAlignVertical="top"
+                  blurOnSubmit={false}
                 />
               </View>
             )}
@@ -403,12 +421,10 @@ export default function Attendance() {
             </View>
           </View>
         </Modal>
-      </View>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
-
-const { height: winHeight } = Dimensions.get("window");
 
 const styles = StyleSheet.create({
   safe: {
@@ -557,21 +573,21 @@ const styles = StyleSheet.create({
   },
   taskLabel: {
     color: "#0f172a",
-    marginBottom: 4,
+    marginBottom: 6,
     fontSize: 13,
     fontWeight: "600",
   },
   taskInput: {
     borderWidth: 1,
     borderColor: "#cbd5e1",
-    borderRadius: 10,
+    borderRadius: 12,
     paddingHorizontal: 12,
-    paddingVertical: 8,
+    paddingVertical: 10,
     backgroundColor: "#f8fafc",
     color: "#0f172a",
     fontSize: 13,
-    minHeight: 60,
-    textAlignVertical: "top",
+    minHeight: 90,
+    maxHeight: 160,
   },
   submitButton: {
     flexDirection: "row",
@@ -618,7 +634,6 @@ const styles = StyleSheet.create({
   historyTitle: { color: "#f9fafb", fontSize: 14, fontWeight: "600" },
   fab: {
     position: "absolute",
-    bottom: 26,
     right: 22,
     width: 64,
     height: 64,

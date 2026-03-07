@@ -1,0 +1,621 @@
+// app/admin/employee-salary-detail.tsx
+import React, { useEffect, useState, useMemo } from "react";
+import {
+  View,
+  Text,
+  StyleSheet,
+  SafeAreaView,
+  ActivityIndicator,
+  TouchableOpacity,
+  FlatList,
+  Alert,
+  Platform,
+} from "react-native";
+import DateTimePicker, {
+  DateTimePickerEvent,
+} from "@react-native-community/datetimepicker";
+import { useLocalSearchParams } from "expo-router";
+import api from "../../services/api";
+
+import RNHTMLtoPDF from "react-native-html-to-pdf";
+import * as Sharing from "expo-sharing";
+
+interface AttendanceRow {
+  date: string;          // "YYYY-MM-DD"
+  weekday: string;       // "Monday"
+  inTime: string | null; // "HH:mm" IST
+  outTime: string | null;
+  hours: number;
+  status: string;
+  task: string;
+  isSunday: boolean;
+}
+
+interface SalarySummary {
+  user_id: string;
+  name: string;
+  salaryType: "hourly" | "fixed";
+  presentDays: number;
+  payableDays: number;
+  basePay: number;
+  overtimePay: number;
+  totalPay: number;
+  hourlyRate?: number;
+  overtimeHourlyRate?: number;
+  fixedMonthlySalary?: number;
+  totalHours?: number;
+  totalOvertime?: number;
+}
+
+interface EmployeeSalaryDetailResponse {
+  success: boolean;
+  summary: SalarySummary | null;
+  attendance: AttendanceRow[];
+}
+
+const current = new Date();
+
+// "2026-03-06" -> "06-03-2026"
+const formatDate = (isoDate: string): string => {
+  if (!isoDate) return "";
+  const [y, m, d] = isoDate.split("-");
+  if (!y || !m || !d) return isoDate;
+  return `${d}-${m}-${y}`;
+};
+
+// Date -> "YYYY-MM-DD"
+const fmtYMD = (d: Date) => {
+  const yy = d.getFullYear();
+  const mm = (d.getMonth() + 1).toString().padStart(2, "0");
+  const dd = d.getDate().toString().padStart(2, "0");
+  return `${yy}-${mm}-${dd}`;
+};
+
+// Build HTML for PDF
+const buildSalaryHtml = (
+  name: string,
+  userId: string,
+  month: number,
+  year: number,
+  summary: SalarySummary | null,
+  rows: AttendanceRow[]
+) => {
+  const monthStr = month.toString().padStart(2, "0");
+
+  const rowsHtml = rows
+    .map(
+      (r) => `
+      <tr>
+        <td>${formatDate(r.date)}</td>
+        <td>${r.weekday}</td>
+        <td>${r.inTime || "-"}</td>
+        <td>${r.outTime || "-"}</td>
+        <td style="text-align:right;">${r.hours.toFixed(2)}</td>
+        <td>${r.status === "absent" ? "AA" : "PP"}</td>
+        <td>${r.task || ""}</td>
+      </tr>
+    `
+    )
+    .join("");
+
+  const summaryHtml = summary
+    ? `
+      <p><strong>Salary Type:</strong> ${summary.salaryType}</p>
+      <p><strong>Presents:</strong> ${summary.presentDays} / ${
+        summary.payableDays
+      }</p>
+      <p><strong>Base Pay:</strong> ₹ ${summary.basePay.toFixed(2)}</p>
+      <p><strong>Overtime Pay:</strong> ₹ ${summary.overtimePay.toFixed(2)}</p>
+      <p><strong>Total Pay:</strong> ₹ ${summary.totalPay.toFixed(2)}</p>
+    `
+    : "<p>No salary summary available.</p>";
+
+  return `
+    <html>
+      <head>
+        <meta charset="utf-8" />
+        <style>
+          body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; font-size: 12px; }
+          h1 { font-size: 18px; text-align: center; margin-bottom: 4px; }
+          h2 { font-size: 14px; text-align: center; margin-top: 0; margin-bottom: 12px; }
+          table { width: 100%; border-collapse: collapse; margin-top: 12px; }
+          th, td { border: 1px solid #ccc; padding: 4px 6px; font-size: 10px; }
+          th { background: #e5e7eb; }
+          .summary { margin-top: 12px; }
+        </style>
+      </head>
+      <body>
+        <h1>Salary Details</h1>
+        <h2>${name} (${userId}) - ${monthStr}/${year}</h2>
+        <div class="summary">
+          ${summaryHtml}
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Weekday</th>
+              <th>In</th>
+              <th>Out</th>
+              <th>Hours</th>
+              <th>Type</th>
+              <th>Remarks</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${
+              rowsHtml ||
+              `<tr><td colspan="7" style="text-align:center;">No attendance records</td></tr>`
+            }
+          </tbody>
+        </table>
+      </body>
+    </html>
+  `;
+};
+
+export default function EmployeeSalaryDetailScreen() {
+  const params = useLocalSearchParams();
+  const userIdParam = typeof params.user_id === "string" ? params.user_id : "";
+  const nameParam = typeof params.name === "string" ? params.name : "";
+
+  // salary summary still needs month/year
+  const [month, setMonth] = useState(current.getMonth() + 1);
+  const [year, setYear] = useState(current.getFullYear());
+
+  // date range filters (like reports screen)
+  const [fromDate, setFromDate] = useState<Date>(current);
+  const [toDate, setToDate] = useState<Date>(current);
+  const [pickerMode, setPickerMode] = useState<"from" | "to">("from");
+  const [showPicker, setShowPicker] = useState(false);
+
+  const [loading, setLoading] = useState(false);
+  const [summary, setSummary] = useState<SalarySummary | null>(null);
+  const [rows, setRows] = useState<AttendanceRow[]>([]);
+
+  const openPicker = (mode: "from" | "to") => {
+    setPickerMode(mode);
+    setShowPicker(true);
+  };
+
+  const onChangeDate = (event: DateTimePickerEvent, date?: Date) => {
+    if (Platform.OS === "android") {
+      setShowPicker(false);
+    }
+    if (event.type === "dismissed" || !date) return;
+
+    if (pickerMode === "from") {
+      setFromDate(date);
+    } else {
+      setToDate(date);
+    }
+
+    // keep month/year in sync with "from" date so salary APIs still work
+    const base = pickerMode === "from" ? date : fromDate;
+    const m = base.getMonth() + 1;
+    const y = base.getFullYear();
+    setMonth(m);
+    setYear(y);
+  };
+
+  const loadData = async () => {
+    if (!userIdParam) return;
+    try {
+      setLoading(true);
+      const res = await api.get<EmployeeSalaryDetailResponse>(
+        `/salary/${encodeURIComponent(userIdParam)}`,
+        {
+          params: {
+            month,
+            year,
+          },
+        }
+      );
+
+      if (!res.data?.success) {
+        throw new Error("Failed to load salary detail");
+      }
+
+      const fromStr = fmtYMD(fromDate);
+      const toStr = fmtYMD(toDate);
+
+      const allRows = res.data.attendance || [];
+      const filteredRows = allRows.filter((r) => {
+        return r.date >= fromStr && r.date <= toStr;
+      });
+
+      setSummary(res.data.summary);
+      setRows(filteredRows);
+    } catch (e: any) {
+      Alert.alert("Error", e?.message || "Failed to load salary detail");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userIdParam, month, year, fromDate, toDate]);
+
+  const totals = useMemo(() => {
+    const totalDays = rows.length;
+    const presents = rows.filter((r) => r.status !== "absent").length;
+    const absents = rows.filter((r) => r.status === "absent").length;
+    const sundays = rows.filter((r) => r.isSunday).length;
+    return { totalDays, presents, absents, sundays };
+  }, [rows]);
+
+  const keyExtractor = (item: AttendanceRow, index: number) =>
+    `${item.date}-${index}`;
+
+  const behavior = Platform.OS === "ios" ? "padding" : "height";
+
+  const handleDownloadPdf = async () => {
+    if (!userIdParam) {
+      Alert.alert("Error", "User not found");
+      return;
+    }
+    if (!rows.length && !summary) {
+      Alert.alert("No data", "No salary data for this period.");
+      return;
+    }
+
+    try {
+      const html = buildSalaryHtml(
+        nameParam,
+        userIdParam,
+        month,
+        year,
+        summary,
+        rows
+      );
+
+      const file = await RNHTMLtoPDF.convert({
+        html,
+        fileName: `salary-${userIdParam}-${year}-${String(month).padStart(
+          2,
+          "0"
+        )}`,
+        directory: "Documents",
+        base64: false,
+      });
+
+      if (!file.filePath) {
+        Alert.alert("Error", "Failed to create PDF file.");
+        return;
+      }
+
+      const canShare = await Sharing.isAvailableAsync();
+      if (canShare) {
+        await Sharing.shareAsync(file.filePath);
+      } else {
+        Alert.alert("PDF created", `Path: ${file.filePath}`);
+      }
+    } catch (e: any) {
+      Alert.alert("Error", e?.message || "Failed to generate PDF");
+    }
+  };
+
+  return (
+    <SafeAreaView style={styles.safe}>
+      <View style={styles.root}>
+        <View style={styles.backgroundLayer}>
+          <View style={[styles.circle, styles.circleTop]} />
+          <View style={[styles.circle, styles.circleBottomLeft]} />
+        </View>
+
+        <View style={styles.container}>
+          {/* Title */}
+          <Text style={styles.title}>
+            {nameParam} ({userIdParam})
+          </Text>
+
+          {/* Filters like reports screen */}
+          <View style={styles.filterCard}>
+            <Text style={styles.filterLabel}>Filters</Text>
+
+            <View style={styles.dateRow}>
+              <View style={styles.dateColumn}>
+                <Text style={styles.labelSmall}>From</Text>
+                <TouchableOpacity
+                  style={styles.dateButton}
+                  onPress={() => openPicker("from")}
+                >
+                  <Text style={styles.dateButtonText}>
+                    {fromDate.toLocaleDateString()}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+              <View style={styles.dateColumn}>
+                <Text style={styles.labelSmall}>To</Text>
+                <TouchableOpacity
+                  style={styles.dateButton}
+                  onPress={() => openPicker("to")}
+                >
+                  <Text style={styles.dateButtonText}>
+                    {toDate.toLocaleDateString()}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            <TouchableOpacity
+              style={[styles.button, loading && styles.buttonDisabled]}
+              onPress={loadData}
+              disabled={loading}
+            >
+              <Text style={styles.buttonText}>
+                {loading ? "Loading..." : "Apply filters"}
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[
+                styles.button,
+                { marginTop: 8, backgroundColor: "#16a34a" },
+              ]}
+              onPress={handleDownloadPdf}
+              disabled={loading}
+            >
+              <Text style={styles.buttonText}>Download month PDF</Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* Summary card */}
+          {summary && (
+            <View style={styles.summaryCard}>
+              <Text style={styles.summaryLine}>
+                Type: {summary.salaryType === "fixed" ? "Fixed" : "Hourly"}
+              </Text>
+              <Text style={styles.summaryLine}>
+                Presents: {summary.presentDays} / {summary.payableDays}
+              </Text>
+              <Text style={styles.summaryLine}>
+                Base: ₹ {summary.basePay.toFixed(2)} | OT: ₹{" "}
+                {summary.overtimePay.toFixed(2)}
+              </Text>
+              <Text style={styles.summaryTotal}>
+                Total: ₹ {summary.totalPay.toFixed(2)}
+              </Text>
+            </View>
+          )}
+
+          {loading ? (
+            <View style={styles.center}>
+              <ActivityIndicator size="large" color="#16a34a" />
+            </View>
+          ) : (
+            <>
+              {/* Table header */}
+              <View style={styles.tableHeader}>
+                <Text style={[styles.headerCell, styles.cellDate]}>Date</Text>
+                <Text style={[styles.headerCell, styles.cellTime]}>In</Text>
+                <Text style={[styles.headerCell, styles.cellTime]}>Out</Text>
+                <Text style={[styles.headerCell, styles.cellHours]}>Hours</Text>
+                <Text style={[styles.headerCell, styles.cellAtt]}>Type</Text>
+                <Text style={[styles.headerCell, styles.cellRemarks]}>
+                  Remarks
+                </Text>
+              </View>
+
+              {/* Attendance rows */}
+              <FlatList
+                data={rows}
+                keyExtractor={keyExtractor}
+                contentContainerStyle={styles.listContent}
+                renderItem={({ item }) => {
+                  const attType = item.status === "absent" ? "AA" : "PP";
+                  const formattedDate = formatDate(item.date);
+                  return (
+                    <View style={styles.tableRow}>
+                      <View style={styles.dateCellWrap}>
+                        <Text style={styles.dateWeekday}>{item.weekday}</Text>
+                        <Text style={styles.dateValue}>{formattedDate}</Text>
+                      </View>
+                      <Text style={[styles.cell, styles.cellTime]}>
+                        {item.inTime || "-"}
+                      </Text>
+                      <Text style={[styles.cell, styles.cellTime]}>
+                        {item.outTime || "-"}
+                      </Text>
+                      <Text style={[styles.cell, styles.cellHours]}>
+                        {item.hours.toFixed(2)}
+                      </Text>
+                      <Text style={[styles.cell, styles.cellAtt]}>
+                        {attType}
+                      </Text>
+                      <Text style={[styles.cell, styles.cellRemarks]}>
+                        {item.task || ""}
+                      </Text>
+                    </View>
+                  );
+                }}
+                ListEmptyComponent={
+                  <View style={styles.center}>
+                    <Text style={styles.emptyText}>
+                      No attendance records for this period.
+                    </Text>
+                  </View>
+                }
+              />
+
+              {/* Footer totals */}
+              <View style={styles.footerCard}>
+                <Text style={styles.footerLine}>
+                  Days: {totals.totalDays} | Present: {totals.presents} |
+                  Absent: {totals.absents} | Sunday: {totals.sundays}
+                </Text>
+              </View>
+            </>
+          )}
+        </View>
+
+        {showPicker && (
+          <DateTimePicker
+            value={pickerMode === "from" ? fromDate : toDate}
+            mode="date"
+            display={Platform.OS === "ios" ? "spinner" : "default"}
+            onChange={onChangeDate}
+          />
+        )}
+      </View>
+    </SafeAreaView>
+  );
+}
+
+const styles = StyleSheet.create({
+  safe: { flex: 1, backgroundColor: "#e5f3ff" },
+  root: { flex: 1, backgroundColor: "#e5f3ff" },
+  backgroundLayer: {
+    ...StyleSheet.absoluteFillObject,
+    overflow: "hidden",
+  },
+  circle: { position: "absolute", width: 220, height: 220, borderRadius: 110 },
+  circleTop: {
+    backgroundColor: "rgba(59,130,246,0.18)",
+    top: -70,
+    right: -50,
+  },
+  circleBottomLeft: {
+    backgroundColor: "rgba(16,185,129,0.16)",
+    bottom: -90,
+    left: -60,
+  },
+  container: { flex: 1, padding: 16 },
+  title: {
+    fontSize: 18,
+    fontWeight: "800",
+    color: "#0f172a",
+    marginBottom: 8,
+  },
+  filterCard: {
+    backgroundColor: "#ffffff",
+    borderRadius: 20,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: "rgba(148,163,184,0.6)",
+    marginBottom: 10,
+    shadowColor: "#0f172a",
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 1,
+  },
+  filterLabel: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: "#0f172a",
+    marginBottom: 6,
+  },
+  labelSmall: { fontSize: 12, color: "#6b7280", marginBottom: 4 },
+  dateRow: { flexDirection: "row", justifyContent: "space-between" },
+  dateColumn: { flex: 1, marginRight: 8 },
+  dateButton: {
+    borderWidth: 1,
+    borderColor: "#cbd5e1",
+    borderRadius: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 10,
+    backgroundColor: "#f8fafc",
+  },
+  dateButtonText: { color: "#0f172a", fontSize: 13 },
+  button: {
+    marginTop: 10,
+    backgroundColor: "#2563eb",
+    borderRadius: 999,
+    paddingVertical: 11,
+    alignItems: "center",
+  },
+  buttonDisabled: { opacity: 0.7 },
+  buttonText: { color: "#f9fafb", fontWeight: "700", fontSize: 14 },
+  summaryCard: {
+    backgroundColor: "#ffffff",
+    borderRadius: 14,
+    padding: 12,
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: "rgba(148,163,184,0.6)",
+    shadowColor: "#0f172a",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 6,
+    elevation: 2,
+  },
+  summaryLine: {
+    fontSize: 12,
+    color: "#4b5563",
+  },
+  summaryTotal: {
+    marginTop: 4,
+    fontSize: 14,
+    color: "#16a34a",
+    fontWeight: "700",
+  },
+  center: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  tableHeader: {
+    flexDirection: "row",
+    borderBottomWidth: 1,
+    borderColor: "#cbd5e1",
+    paddingVertical: 6,
+    backgroundColor: "#cbcdd6",
+    borderRadius: 8,
+    paddingHorizontal: 4,
+    marginBottom: 4,
+  },
+  headerCell: {
+    fontSize: 11,
+    color: "#0f172a",
+    fontWeight: "700",
+  },
+  tableRow: {
+    flexDirection: "row",
+    paddingVertical: 6,
+    paddingHorizontal: 4,
+    borderBottomWidth: 0.4,
+    borderColor: "#e5e7eb",
+    backgroundColor: "#f8fafc",
+    borderRadius: 8,
+    marginBottom: 4,
+  },
+  cell: {
+    fontSize: 11,
+    color: "#0f172a",
+  },
+  cellDate: { flex: 2.6 },
+  cellTime: { flex: 1, textAlign: "center" },
+  cellHours: { flex: 1, textAlign: "center" },
+  cellAtt: { flex: 0.8, textAlign: "center" },
+  cellRemarks: { flex: 2 },
+  dateCellWrap: {
+    flex: 2.6,
+  },
+  dateWeekday: {
+    fontSize: 11,
+    color: "#0f172a",
+    fontWeight: "600",
+  },
+  dateValue: {
+    fontSize: 10,
+    color: "#6b7280",
+  },
+  listContent: { paddingBottom: 16 },
+  emptyText: {
+    color: "#6b7280",
+    fontSize: 13,
+  },
+  footerCard: {
+    marginTop: 6,
+    padding: 8,
+    borderRadius: 12,
+    backgroundColor: "#e0f2fe",
+  },
+  footerLine: {
+    fontSize: 11,
+    color: "#0f172a",
+  },
+});
